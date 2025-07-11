@@ -4,7 +4,7 @@ console.log('🔍 فحص اتصال قاعدة البيانات MongoDB Atlas...
 console.log('=' .repeat(50));
 
 // Connection string with the correct password
-const MONGODB_URI = 'mongodb+srv://hrsystem:KUv0eSeiMJbXRNsl@hr-system.veyoe3q.mongodb.net/hr-system?retryWrites=true&w=majority&appName=HR-System';
+const MONGODB_URI = 'mongodb://127.0.0.1:27017/hr-system';
 
 async function checkDatabaseConnection() {
     try {

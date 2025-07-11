@@ -6,7 +6,7 @@ const testTrackingRecords = async () => {
     console.log('🧪 اختبار endpoint في tracking.js...');
     
     const userId = '684fedd883e2693199a30a96';
-    const url = `http://localhost:5001/api/tracking/daily-records/${userId}`;
+    const url = `https://hr-api.in-general.net/api/tracking/daily-records/${userId}`;
     
     console.log('📡 إرسال طلب إلى:', url);
     

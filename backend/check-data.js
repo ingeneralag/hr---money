@@ -3,7 +3,7 @@ const Tracking = require('./models/Tracking');
 const Employee = require('./models/Employee');
 
 // استخدام MongoDB Atlas بدلاً من المحلي
-const MONGODB_URI = 'mongodb+srv://hrsystem:KUv0eSeiMJbXRNsl@hr-system.veyoe3q.mongodb.net/hr-system?retryWrites=true&w=majority&appName=HR-System';
+const MONGODB_URI = 'mongodb://127.0.0.1:27017/hr_system';
 
 console.log('🔗 الاتصال بـ MongoDB Atlas...');
 mongoose.connect(MONGODB_URI, {

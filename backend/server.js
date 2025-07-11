@@ -14,7 +14,7 @@ const server = createServer(app);
 // إعداد Socket.IO للتحكم في التطبيق المكتبي
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:5001"],
+    origin: ["http://localhost:3000", "https://hr-api.in-general.net/api"],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -90,7 +90,7 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     const allowedOrigins = [
       'http://localhost:3000',
-      'http://localhost:5001', 
+      'https://hr-api.in-general.net/api', 
       'http://127.0.0.1:3000',
       'http://127.0.0.1:5001',
       undefined // Allow requests with no origin

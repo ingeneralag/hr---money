@@ -4,7 +4,7 @@
 const axios = require('axios');
 
 // إعدادات الاختبار
-const BASE_URL = 'http://localhost:5001/api/tracking';
+const BASE_URL = 'https://hr-api.in-general.net/api/tracking';
 let authToken = '';
 let employeeId = '';
 

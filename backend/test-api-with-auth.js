@@ -5,7 +5,7 @@ async function testDataMismatch() {
     console.log('🔑 Authenticating...');
     
     // Login to get auth token
-    const loginResponse = await axios.post('http://localhost:5001/api/auth/login', {
+    const loginResponse = await axios.post('https://hr-api.in-general.net/api/auth/login', {
       username: 'admin',
       password: 'admin123'
     });
@@ -28,11 +28,11 @@ async function testDataMismatch() {
     const userId = loggedInUserId; // This is '6855b3f715cf56bc12d059a3'
     
     console.log('\n📊 Testing Daily Attendance API...');
-    console.log('🎯 Using endpoint:', `http://localhost:5001/api/daily-attendance/employee/${userId}/month/2025-06`);
+    console.log('🎯 Using endpoint:', `https://hr-api.in-general.net/api/daily-attendance/employee/${userId}/month/2025-06`);
     
     // Test the daily attendance endpoint
     const attendanceResponse = await axios.get(
-      `http://localhost:5001/api/daily-attendance/employee/${userId}/month/2025-06`,
+      `https://hr-api.in-general.net/api/daily-attendance/employee/${userId}/month/2025-06`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -98,7 +98,7 @@ async function testDataMismatch() {
     
     try {
       const meResponse = await axios.get(
-        'http://localhost:5001/api/dashboard/me',
+        'https://hr-api.in-general.net/api/dashboard/me',
         {
           headers: {
             'Authorization': `Bearer ${token}`,

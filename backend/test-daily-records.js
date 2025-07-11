@@ -7,7 +7,7 @@ const testDailyRecords = async () => {
     console.log('🧪 اختبار endpoint جلب السجلات اليومية...');
     
     const userId = '684fedd883e2693199a30a96';
-    const url = `http://localhost:5001/api/employees/daily-records/${userId}`;
+    const url = `https://hr-api.in-general.net/api/employees/daily-records/${userId}`;
     
     console.log('📡 إرسال طلب إلى:', url);
     

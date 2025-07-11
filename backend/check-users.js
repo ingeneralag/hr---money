@@ -6,7 +6,7 @@ async function checkUsers() {
     console.log('🔍 فحص المستخدمين في قاعدة البيانات...');
 
     // الاتصال بقاعدة البيانات
-    const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://hrsystem:KUv0eSeiMJbXRNsl@hr-system.veyoe3q.mongodb.net/hr-system?retryWrites=true&w=majority&appName=HR-System';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/hr_system';
     await mongoose.connect(mongoUri);
     console.log('✅ متصل بقاعدة البيانات');
 

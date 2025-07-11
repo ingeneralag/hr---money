@@ -4,7 +4,7 @@ console.log('🔍 Testing MongoDB Atlas Connection...');
 console.log('📍 Current directory:', __dirname);
 
 // Connection string
-const MONGODB_URI = 'mongodb+srv://hrsystem:KUv0eSeiMJbXRNsl@hr-system.veyoe3q.mongodb.net/hr-system?retryWrites=true&w=majority&appName=HR-System';
+const MONGODB_URI = 'mongodb://127.0.0.1:27017/hr-system';
 
 console.log('🔗 Connection URI configured');
 console.log('📡 Attempting to connect to MongoDB Atlas...');

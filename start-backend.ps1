@@ -2,7 +2,7 @@ Write-Host "🚀 Starting HR System Backend..." -ForegroundColor Green
 Write-Host "📍 Current directory: $(Get-Location)" -ForegroundColor Cyan
 
 # Set environment variables
-$env:MONGODB_URI = "mongodb+srv://hrsystem:KUv0eSeiMJbXRNsl@hr-system.veyoe3q.mongodb.net/hr-system?retryWrites=true&w=majority&appName=HR-System"
+$env:MONGODB_URI = "mongodb://127.0.0.1:27017/hr-system"
 $env:PORT = "5001"
 $env:NODE_ENV = "development"
 $env:JWT_SECRET = "hr_time_tracker_secret_key_2024_production_secure"

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // استخدام MongoDB Atlas
-const MONGODB_URI = 'mongodb+srv://hrsystem:KUv0eSeiMJbXRNsl@hr-system.veyoe3q.mongodb.net/hr-system?retryWrites=true&w=majority&appName=HR-System';
+const MONGODB_URI = 'mongodb://127.0.0.1:27017/hr-system';
 
 console.log('🔍 فحص المعاملات في قاعدة البيانات hr-system...');
 console.log('=' .repeat(60));

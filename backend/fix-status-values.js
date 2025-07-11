@@ -3,7 +3,7 @@ const DailyAttendance = require('./models/DailyAttendance');
 
 async function fixStatusValues() {
     try {
-        await mongoose.connect('mongodb+srv://hrsystem:KUv0eSeiMJbXRNsl@hr-system.veyoe3q.mongodb.net/hr-system?retryWrites=true&w=majority&appName=HR-System');
+        await mongoose.connect('mongodb://127.0.0.1:27017/hr_system');
         
         console.log('🔍 Checking existing records with invalid status...');
         
