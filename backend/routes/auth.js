@@ -218,7 +218,7 @@ router.post('/register', async (req, res) => {
     });
 
     console.log('Saving user:', user);
-    await user.save();
+    // await user.save();
     console.log('✅ User saved successfully:', user._id);
 
     // Create new employee record
