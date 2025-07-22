@@ -17,7 +17,7 @@ const io = new Server(server, {
     origin: [
       "http://localhost:3000",
       "https://hr-api.in-general.net/api",
-      "https://hr-dash.in-general.net/",
+      "https://hr-dash.in-general.net",
     ],
     methods: ["GET", "POST"],
     credentials: true,
@@ -97,7 +97,7 @@ const corsOptions = {
       "https://hr-api.in-general.net/api",
       "http://127.0.0.1:3000",
       "http://127.0.0.1:5001",
-      "https://hr-dash.in-general.net/",
+      "https://hr-dash.in-general.net",
       undefined, // Allow requests with no origin
     ];
 
