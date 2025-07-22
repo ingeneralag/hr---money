@@ -1,139 +1,169 @@
-import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Eye, EyeOff, User, Shield, Mail, Lock, Sun, Moon } from 'lucide-react'
-import { useTheme } from '../contexts/ThemeContext'
+import { Eye, EyeOff, Lock, Mail, Moon, Shield, Sun, User } from "lucide-react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { useTheme } from "../contexts/ThemeContext";
 
 const LoginPage = ({ onLogin }) => {
   const [formData, setFormData] = useState({
-    identifier: '',
-    password: ''
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const { isDarkMode, toggleTheme } = useTheme()
-  const navigate = useNavigate()
+    identifier: "",
+    password: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { isDarkMode, toggleTheme } = useTheme();
+  const navigate = useNavigate();
 
   // فحص إذا كان المستخدم جاء بسبب انتهاء صلاحية التوكن
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('expired') === 'true') {
-      setError('انتهت صلاحية جلسة العمل، الرجاء تسجيل الدخول مرة أخرى');
+    if (urlParams.get("expired") === "true") {
+      setError("انتهت صلاحية جلسة العمل، الرجاء تسجيل الدخول مرة أخرى");
     }
   }, []);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
-      console.log('🔐 محاولة تسجيل دخول من LoginPage:', formData);
-      
-      // استخدام fetch مباشرة بدلاً من authService لتجنب المشاكل
-      const response = await fetch('http://localhost:5001/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          identifier: formData.username,
-          password: formData.password
-        }),
-      });
+      console.log("🔐 محاولة تسجيل دخول من LoginPage:", formData);
 
-      console.log('📡 Response status:', response.status);
-      
+      // استخدام fetch مباشرة بدلاً من authService لتجنب المشاكل
+      const response = await fetch(
+        process.env.REACT_APP_API_URL + "/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            identifier: formData.username,
+            password: formData.password,
+          }),
+        }
+      );
+
+      console.log("📡 Response status:", response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Login failed:', errorText);
+        console.error("❌ Login failed:", errorText);
         throw new Error(`فشل في تسجيل الدخول: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('✅ Login successful:', data);
-      
+      console.log("✅ Login successful:", data);
+
       if (data.success && data.data && data.data.token) {
         // حفظ التوكن والبيانات
-        localStorage.setItem('token', data.data.token);
-        localStorage.setItem('user', JSON.stringify(data.data.user || {
-          identifier: formData.username,
-          role: 'admin'
-        }));
-        
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem(
+          "user",
+          JSON.stringify(
+            data.data.user || {
+              identifier: formData.username,
+              role: "admin",
+            }
+          )
+        );
+
         // استدعاء onLogin callback
         if (onLogin) {
-          onLogin(data.data.user || { identifier: formData.username, role: 'admin' });
+          onLogin(
+            data.data.user || { identifier: formData.username, role: "admin" }
+          );
         }
-        
+
         // التوجيه للصفحة الرئيسية
-        navigate('/');
+        navigate("/");
       } else {
-        throw new Error('لم يتم إرجاع توكن صحيح');
+        throw new Error("لم يتم إرجاع توكن صحيح");
       }
     } catch (error) {
-      console.error('🚨 Login error:', error);
-      setError(error.message || 'حدث خطأ أثناء تسجيل الدخول');
+      console.error("🚨 Login error:", error);
+      setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleQuickLogin = async (userType) => {
-    setIsLoading(true)
-    setError('')
-    
+    setIsLoading(true);
+    setError("");
+
     try {
-      const credentials = userType === 'admin' 
-        ? { identifier: 'admin', password: 'admin123' }  // تصحيح اسم المستخدم
-        : { identifier: 'employee', password: 'emp123' }
-      
-      console.log('🚀 دخول سريع:', credentials);
-      
-      const response = await fetch('http://localhost:5001/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
+      const credentials =
+        userType === "admin"
+          ? { identifier: "admin", password: "admin123" } // تصحيح اسم المستخدم
+          : { identifier: "employee", password: "emp123" };
+
+      console.log("🚀 دخول سريع:", credentials);
+
+      const response = await fetch(
+        process.env.REACT_APP_API_URL + "/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(credentials),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`فشل في تسجيل الدخول: ${response.status}`);
       }
 
       const data = await response.json();
-      
+
       if (data.success && data.data && data.data.token) {
-        localStorage.setItem('token', data.data.token);
-        localStorage.setItem('user', JSON.stringify(data.data.user || {
-          identifier: credentials.username,
-          role: userType
-        }));
-        
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem(
+          "user",
+          JSON.stringify(
+            data.data.user || {
+              identifier: credentials.username,
+              role: userType,
+            }
+          )
+        );
+
         if (onLogin) {
-          onLogin(data.data.user || { identifier: credentials.username, role: userType });
+          onLogin(
+            data.data.user || {
+              identifier: credentials.username,
+              role: userType,
+            }
+          );
         }
-        
-        navigate('/');
+
+        navigate("/");
       }
     } catch (error) {
-      console.error('❌ Quick login error:', error);
-      setError(error.message || 'حدث خطأ أثناء تسجيل الدخول السريع')
+      console.error("❌ Quick login error:", error);
+      setError(error.message || "حدث خطأ أثناء تسجيل الدخول السريع");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
-    })
-    setError('')
-  }
+      [e.target.name]: e.target.value,
+    });
+    setError("");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4 transition-colors duration-300">
@@ -143,7 +173,9 @@ const LoginPage = ({ onLogin }) => {
           variant="ghost"
           size="sm"
           onClick={toggleTheme}
-          title={isDarkMode ? 'تبديل إلى الوضع الفاتح' : 'تبديل إلى الوضع المظلم'}
+          title={
+            isDarkMode ? "تبديل إلى الوضع الفاتح" : "تبديل إلى الوضع المظلم"
+          }
           className="p-2 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300"
         >
           {isDarkMode ? (
@@ -155,7 +187,6 @@ const LoginPage = ({ onLogin }) => {
       </div>
 
       <div className="w-full max-w-6xl mx-auto grid lg:grid-cols-2 gap-8 items-center">
-        
         {/* الجانب الأيسر - معلومات النظام */}
         <div className="hidden lg:block space-y-6">
           <div className="text-center space-y-4">
@@ -172,32 +203,51 @@ const LoginPage = ({ onLogin }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
-              <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">إدارة الموظفين</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">إضافة وتعديل بيانات الموظفين بسهولة</p>
+              <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">
+                إدارة الموظفين
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                إضافة وتعديل بيانات الموظفين بسهولة
+              </p>
             </div>
             <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
-              <h3 className="font-semibold text-purple-600 dark:text-purple-400 mb-2">إدارة الرواتب</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">حساب ومتابعة الرواتب والبدلات</p>
+              <h3 className="font-semibold text-purple-600 dark:text-purple-400 mb-2">
+                إدارة الرواتب
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                حساب ومتابعة الرواتب والبدلات
+              </p>
             </div>
             <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
-              <h3 className="font-semibold text-green-600 dark:text-green-400 mb-2">التقارير المالية</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">تقارير شاملة عن الوضع المالي</p>
+              <h3 className="font-semibold text-green-600 dark:text-green-400 mb-2">
+                التقارير المالية
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                تقارير شاملة عن الوضع المالي
+              </p>
             </div>
             <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
-              <h3 className="font-semibold text-orange-600 dark:text-orange-400 mb-2">إدارة الحضور</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">متابعة حضور وغياب الموظفين</p>
+              <h3 className="font-semibold text-orange-600 dark:text-orange-400 mb-2">
+                إدارة الحضور
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                متابعة حضور وغياب الموظفين
+              </p>
             </div>
           </div>
         </div>
 
         {/* الجانب الأيمن - نموذج تسجيل الدخول */}
         <div className="w-full max-w-md mx-auto space-y-6">
-          
           {/* بطاقة تسجيل الدخول الرئيسية */}
           <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50 shadow-xl">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">تسجيل الدخول</CardTitle>
-              <CardDescription className="dark:text-gray-300">أدخل بياناتك للوصول إلى النظام</CardDescription>
+              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                تسجيل الدخول
+              </CardTitle>
+              <CardDescription className="dark:text-gray-300">
+                أدخل بياناتك للوصول إلى النظام
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -209,7 +259,9 @@ const LoginPage = ({ onLogin }) => {
 
                 {/* اسم المستخدم أو البريد الإلكتروني */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">اسم المستخدم أو البريد الإلكتروني</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    اسم المستخدم أو البريد الإلكتروني
+                  </label>
                   <div className="relative">
                     <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
@@ -226,11 +278,13 @@ const LoginPage = ({ onLogin }) => {
 
                 {/* كلمة المرور */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">كلمة المرور</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    كلمة المرور
+                  </label>
                   <div className="relative">
                     <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
-                      type={showPassword ? 'text' : 'password'}
+                      type={showPassword ? "text" : "password"}
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
@@ -243,22 +297,30 @@ const LoginPage = ({ onLogin }) => {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
 
                 {/* زر تسجيل الدخول */}
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isLoading}
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 py-3 text-lg font-medium"
                 >
-                  {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                  {isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
                 </Button>
                 <div className="text-center mt-4">
-                  <span className="text-gray-600 dark:text-gray-300">ليس لديك حساب؟ </span>
-                  <Link to="/signup" className="text-blue-600 hover:underline">إنشاء حساب جديد</Link>
+                  <span className="text-gray-600 dark:text-gray-300">
+                    ليس لديك حساب؟{" "}
+                  </span>
+                  <Link to="/signup" className="text-blue-600 hover:underline">
+                    إنشاء حساب جديد
+                  </Link>
                 </div>
               </form>
             </CardContent>
@@ -267,13 +329,15 @@ const LoginPage = ({ onLogin }) => {
           {/* خيارات الدخول السريع */}
           <div className="space-y-4">
             <div className="text-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">أو</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                أو
+              </span>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* دخول كمدير */}
               <Button
-                onClick={() => handleQuickLogin('admin')}
+                onClick={() => handleQuickLogin("admin")}
                 disabled={isLoading}
                 variant="outline"
                 className="flex items-center justify-center space-x-2 rtl:space-x-reverse py-3 bg-white/60 dark:bg-gray-800/60 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-700 hover:border-blue-300 dark:hover:border-blue-600"
@@ -284,7 +348,7 @@ const LoginPage = ({ onLogin }) => {
 
               {/* دخول كموظف */}
               <Button
-                onClick={() => handleQuickLogin('employee')}
+                onClick={() => handleQuickLogin("employee")}
                 disabled={isLoading}
                 variant="outline"
                 className="flex items-center justify-center space-x-2 rtl:space-x-reverse py-3 bg-white/60 dark:bg-gray-800/60 hover:bg-green-50 dark:hover:bg-green-900/20 border-green-200 dark:border-green-700 hover:border-green-300 dark:hover:border-green-600"
@@ -297,7 +361,8 @@ const LoginPage = ({ onLogin }) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default LoginPage 
+export default LoginPage;
+
