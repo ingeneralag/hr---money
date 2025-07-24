@@ -311,7 +311,7 @@ const EmployeeDetailsPage = () => {
       // استخدام نفس API endpoint المستخدم في MePage مع معامل الشهر لضمان تطابق البيانات
       const trackingResponse = await fetch(
         process.env.REACT_APP_API_URL +
-          `/daily-attendance/user-records/${employee.userId}?month=${selectedMonth}`,
+          `/daily-attendance/user-records/${employee.userId?._id}?month=${selectedMonth}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -3215,3 +3215,4 @@ const EmployeeDetailsPage = () => {
 };
 
 export default EmployeeDetailsPage;
+
