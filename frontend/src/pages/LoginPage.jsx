@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Lock, Mail, Moon, Shield, Sun, User } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Moon, Sun } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -325,39 +325,6 @@ const LoginPage = ({ onLogin }) => {
               </form>
             </CardContent>
           </Card>
-
-          {/* خيارات الدخول السريع */}
-          <div className="space-y-4">
-            <div className="text-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                أو
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* دخول كمدير */}
-              <Button
-                onClick={() => handleQuickLogin("admin")}
-                disabled={isLoading}
-                variant="outline"
-                className="flex items-center justify-center space-x-2 rtl:space-x-reverse py-3 bg-white/60 dark:bg-gray-800/60 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-700 hover:border-blue-300 dark:hover:border-blue-600"
-              >
-                <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span className="font-medium">دخول كمدير</span>
-              </Button>
-
-              {/* دخول كموظف */}
-              <Button
-                onClick={() => handleQuickLogin("employee")}
-                disabled={isLoading}
-                variant="outline"
-                className="flex items-center justify-center space-x-2 rtl:space-x-reverse py-3 bg-white/60 dark:bg-gray-800/60 hover:bg-green-50 dark:hover:bg-green-900/20 border-green-200 dark:border-green-700 hover:border-green-300 dark:hover:border-green-600"
-              >
-                <User className="w-4 h-4 text-green-600 dark:text-green-400" />
-                <span className="font-medium">دخول كموظف</span>
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

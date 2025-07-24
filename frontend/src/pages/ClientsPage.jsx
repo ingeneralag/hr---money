@@ -451,9 +451,9 @@ const ClientsPage = () => {
                   <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
                     العميل
                   </th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
+                  {/* <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
                     النوع
-                  </th>
+                  </th> */}
                   <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
                     الحالة
                   </th>
@@ -503,7 +503,7 @@ const ClientsPage = () => {
                     <td className="py-3 px-2">
                       <div
                         className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
-                        onClick={() => navigate(`/clients/${client._id}`)}
+                        // onClick={() => navigate(`/clients/${client._id}`)}
                       >
                         <div className="font-medium text-gray-900 dark:text-white hover:text-blue-600">
                           {client.name}
@@ -518,7 +518,7 @@ const ClientsPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-2">
+                    {/* <td className="py-3 px-2">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
                           client.type === "شركة"
@@ -532,7 +532,7 @@ const ClientsPage = () => {
                       >
                         {client.type}
                       </span>
-                    </td>
+                    </td> */}
                     <td className="py-3 px-2">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -554,7 +554,7 @@ const ClientsPage = () => {
                             : "text-red-600 dark:text-red-400"
                         }`}
                       >
-                        {formatCurrency(Math.abs(client.currentBalance))}
+                        {formatCurrency(Math.abs(client.currentBalance) || 0)}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         {client.currentBalance >= 0 ? "له علينا" : "عليه لنا"}
@@ -581,7 +581,7 @@ const ClientsPage = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleViewDetails(client)}
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 !p-0"
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -593,7 +593,7 @@ const ClientsPage = () => {
                             setMessageType("single");
                             setShowMessageModal(true);
                           }}
-                          className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                          className="h-8 w-8 !p-0 text-green-600 hover:text-green-700"
                         >
                           <MessageSquare className="w-4 h-4" />
                         </Button>
@@ -604,7 +604,7 @@ const ClientsPage = () => {
                             setSelectedClient(client);
                             setShowEditModal(true);
                           }}
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 !p-0"
                         >
                           <Edit3 className="w-4 h-4" />
                         </Button>
@@ -612,7 +612,7 @@ const ClientsPage = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteClient(client._id)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                          className="h-8 w-8 !p-0 text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
