@@ -112,7 +112,7 @@ router.put(
 // DELETE category
 router.delete("/:id", requireAuth, requireRole("admin"), async (req, res) => {
   try {
-    const cat = await Category.findOneAndDelete({ ـid: req.params.id });
+    const cat = await Category.findByIdAndRemove(req.params.id);
     if (!cat) return sendError(res, 404, "الفئة غير موجودة", "NOT_FOUND");
     res.json({ success: true, message: "تم حذف الفئة بنجاح" });
   } catch (err) {
