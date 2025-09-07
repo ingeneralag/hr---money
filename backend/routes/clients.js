@@ -8,7 +8,7 @@ const Client = require('../models/Client');
 // GET all clients (with filtering, search, pagination)
 router.get('/', requireAuth, requireViewerOrHigher, async (req, res) => {
   try {
-    const { industry, status, priority, search, page = 1, limit = 50 } = req.query;
+    const { industry, status, priority, search, page = 1, limit = 10000 } = req.query;
     const filter = {};
     if (industry) filter.industry = industry;
     if (status) filter.status = status;
@@ -22,7 +22,7 @@ router.get('/', requireAuth, requireViewerOrHigher, async (req, res) => {
       ];
     }
     const pageNum = parseInt(page) || 1;
-    const pageSize = parseInt(limit) || 50;
+    const pageSize = parseInt(limit) || 10000;
     const total = await Client.countDocuments(filter);
     const pages = Math.ceil(total / pageSize);
     const clients = await Client.find(filter)

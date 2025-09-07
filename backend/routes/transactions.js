@@ -15,7 +15,7 @@ router.get("/", async (req, res) => {
     // محاولة جلب البيانات من قاعدة البيانات
     try {
       // Pagination and status filter
-      const { page = 1, limit = 10, status } = req.query;
+      const { page = 1, limit = 10000, status } = req.query;
       const query = {};
       if (status) {
         query.status = status;
@@ -47,8 +47,8 @@ router.get("/", async (req, res) => {
         pagination: {
           total: transactions.length,
           page: 1,
-          limit: 10,
-          pages: Math.ceil(transactions.length / 10),
+          limit: parseInt(limit) || 10000,
+          pages: Math.ceil(transactions.length / (parseInt(limit) || 10000)),
         },
       });
     } catch (dbError) {
