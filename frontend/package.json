@@ -35,11 +35,11 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "set PORT=5002&& set WDS_ALLOWED_HOSTS=all&& react-scripts start",
+    "start": "set PORT=5002&& react-scripts start --allowed-hosts all",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "dev": "set PORT=5002&& set WDS_ALLOWED_HOSTS=all&& react-scripts start"
+    "dev": "set PORT=5002&& react-scripts start --allowed-hosts all"
   },
   "browserslist": {
     "production": [
