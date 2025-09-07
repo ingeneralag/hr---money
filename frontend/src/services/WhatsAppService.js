@@ -29,7 +29,7 @@ class WhatsAppService {
     // Utility method for API calls
     async apiCall(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
-        
+
         const config = {
             headers: {
                 'Content-Type': 'application/json',
@@ -41,11 +41,11 @@ class WhatsAppService {
         try {
             const response = await fetch(url, config);
             const data = await response.json();
-            
+
             if (!response.ok) {
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
             }
-            
+
             return data;
         } catch (error) {
             console.error(`API call failed: ${endpoint}`, error);
@@ -78,7 +78,7 @@ class WhatsAppService {
         try {
             // إعادة تعيين الحالة قبل التهيئة
             this.resetState();
-            
+
             const response = await fetch(`${this.baseURL}/initialize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
@@ -110,12 +110,12 @@ class WhatsAppService {
             }
 
             const data = await response.json();
-            
+
             // تحديث الحالة المحلية
             this.state.status = data.data.isReady ? 'connected' : (data.data.qrCode ? 'qr_ready' : 'disconnected');
             this.state.qrCode = data.data.qrCode;
             this.state.authInfo = data.data.authInfo || null;
-            
+
             // الحصول على الإحصائيات الحالية
             const statsResponse = await fetch(`${this.baseURL}/stats`);
             if (statsResponse.ok) {
@@ -149,11 +149,11 @@ class WhatsAppService {
                 headers: { 'Content-Type': 'application/json' }
             });
             const result = await response.json();
-            
+
             if (!result.success) {
                 throw new Error(result.message || 'فشل في قطع الاتصال');
             }
-            
+
             return result;
         } catch (error) {
             console.error('WhatsApp disconnect error:', error);
@@ -177,11 +177,11 @@ class WhatsAppService {
     async getQRImage() {
         const url = `${this.baseURL}/qr-image`;
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`Failed to get QR image: ${response.status}`);
         }
-        
+
         return response.blob();
     }
 
@@ -201,7 +201,7 @@ class WhatsAppService {
             const poll = async () => {
                 try {
                     attempt++;
-                    
+
                     if (onProgress) {
                         onProgress({
                             attempt,
@@ -211,7 +211,7 @@ class WhatsAppService {
                     }
 
                     const result = await this.getQRCode();
-                    
+
                     if (result.success && result.qrCode) {
                         if (onQRReceived) {
                             onQRReceived(result.qrCode);
@@ -231,7 +231,7 @@ class WhatsAppService {
                 } catch (error) {
                     lastError = error;
                     console.log(`QR Code polling attempt ${attempt} failed:`, error.message);
-                    
+
                     if (attempt >= maxAttempts) {
                         reject(new Error(`QR Code polling failed after ${maxAttempts} attempts. Last error: ${error.message}`));
                         return;
@@ -256,11 +256,11 @@ class WhatsAppService {
                 body: JSON.stringify({ to, message, options })
             });
             const result = await response.json();
-            
+
             if (!result.success) {
                 throw new Error(result.message || 'فشل في إرسال الرسالة');
             }
-            
+
             return result;
         } catch (error) {
             console.error('WhatsApp send message error:', error);
@@ -347,11 +347,11 @@ class WhatsAppService {
         return await this.apiCall(`/stats?days=${days}`);
     }
 
-    async getLogs(limit = 100, type = null, status = null) {
+    async getLogs(limit = 10000, type = null, status = null) {
         let query = `?limit=${limit}`;
         if (type) query += `&type=${type}`;
         if (status) query += `&status=${status}`;
-        
+
         return await this.apiCall(`/logs${query}`);
     }
 
@@ -453,7 +453,7 @@ class WhatsAppService {
             console.error('Event source error:', error);
             this.eventSource.close();
             this.eventSource = null;
-            
+
             // Attempt to reconnect after 5 seconds
             setTimeout(() => this.startEventStream(), 5000);
         };
@@ -492,13 +492,13 @@ class WhatsAppService {
     async batchValidatePhones(phones) {
         const results = [];
         const batchSize = 10;
-        
+
         for (let i = 0; i < phones.length; i += batchSize) {
             const batch = phones.slice(i, i + batchSize);
             const batchResults = await this.formatPhones(batch);
             results.push(...batchResults.results);
         }
-        
+
         return { results };
     }
 
@@ -507,13 +507,13 @@ class WhatsAppService {
         const variableRegex = /\{\{([^}]+)\}\}/g;
         const variables = [];
         let match;
-        
+
         while ((match = variableRegex.exec(content)) !== null) {
             if (!variables.includes(match[1])) {
                 variables.push(match[1]);
             }
         }
-        
+
         return variables;
     }
 
@@ -577,7 +577,7 @@ class WhatsAppService {
     // Phone number formatting helpers
     formatSaudiNumber(phone) {
         const cleaned = phone.replace(/[^\d]/g, '');
-        
+
         if (cleaned.startsWith('966')) {
             return cleaned;
         } else if (cleaned.startsWith('05')) {
@@ -585,19 +585,19 @@ class WhatsAppService {
         } else if (cleaned.startsWith('5') && cleaned.length === 9) {
             return '966' + cleaned;
         }
-        
+
         return cleaned;
     }
 
     isValidSaudiNumber(phone) {
         const cleaned = phone.replace(/[^\d]/g, '');
-        
+
         if (cleaned.startsWith('966')) {
             return cleaned.length === 12 && cleaned.substring(3, 4) === '5';
         } else if (cleaned.startsWith('05')) {
             return cleaned.length === 10;
         }
-        
+
         return false;
     }
 
@@ -618,10 +618,10 @@ class WhatsAppService {
 
     // Statistics helpers
     formatStats(stats) {
-        const successRate = stats.totalMessages > 0 
+        const successRate = stats.totalMessages > 0
             ? ((stats.successfulMessages / stats.totalMessages) * 100).toFixed(1)
             : 0;
-            
+
         return {
             ...stats,
             successRate: `${successRate}%`,
@@ -634,7 +634,7 @@ class WhatsAppService {
         const days = Math.floor(seconds / 86400);
         const hours = Math.floor((seconds % 86400) / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
-        
+
         if (days > 0) {
             return `${days}د ${hours}س ${minutes}ق`;
         } else if (hours > 0) {
@@ -671,7 +671,7 @@ class WhatsAppService {
             }
 
             const data = await response.json();
-            
+
             // 4. إرسال حدث إعادة التعيين
             this.emit('reset', {
                 message: data.message,

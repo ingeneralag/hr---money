@@ -8,7 +8,7 @@ const Category = require("../models/Category");
 // GET all categories (filter, search, pagination)
 router.get("/", async (req, res) => {
   try {
-    const { type, search, page = 1, limit = 50 } = req.query;
+    const { type, search, page = 1, limit = 10000 } = req.query;
     const filter = {};
     if (type) filter.type = type;
     if (search) {
@@ -16,7 +16,7 @@ router.get("/", async (req, res) => {
       filter.$or = [{ name: s }, { nameEn: s }, { description: s }];
     }
     const pageNum = parseInt(page) || 1;
-    const pageSize = parseInt(limit) || 50;
+    const pageSize = parseInt(limit) || 10000;
     const total = await Category.countDocuments(filter);
     const pages = Math.ceil(total / pageSize);
     const cats = await Category.find(filter)

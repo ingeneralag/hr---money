@@ -240,7 +240,7 @@ export const employeeService = {
         pagination: {
           total: 3,
           page: 1,
-          limit: 10,
+          limit: 10000,
           pages: 1,
         },
       };
@@ -568,7 +568,7 @@ export const transactionService = {
         pagination: {
           total: sampleTransactions.length,
           page: 1,
-          limit: 10,
+          limit: 10000,
           pages: 1,
         },
       };
