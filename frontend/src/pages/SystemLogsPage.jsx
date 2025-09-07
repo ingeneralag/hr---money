@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useNotifications } from '../components/NotificationSystem';
-import { 
+import {
   Activity,
   Search,
   Filter,
@@ -35,7 +35,7 @@ const SystemLogsPage = () => {
     dateFrom: '',
     dateTo: '',
     page: 1,
-    limit: 20
+    limit: 10000
   });
   const [pagination, setPagination] = useState({});
   const [showFilters, setShowFilters] = useState(false);
@@ -89,7 +89,7 @@ const SystemLogsPage = () => {
       dateFrom: '',
       dateTo: '',
       page: 1,
-      limit: 20
+      limit: 10000
     });
   };
 
@@ -185,7 +185,7 @@ const SystemLogsPage = () => {
           </h1>
           <p className="text-gray-600 mt-1">مراقبة وتتبع جميع العمليات والأنشطة</p>
         </div>
-        
+
         <div className="flex gap-2">
           <Button
             onClick={() => exportLogs('json')}
@@ -508,7 +508,7 @@ const SystemLogsPage = () => {
                   إغلاق
                 </Button>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -587,7 +587,7 @@ const SystemLogsPage = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {selectedLog.endpoint && (
                   <div>
                     <label className="font-medium text-gray-700">المسار:</label>
@@ -596,7 +596,7 @@ const SystemLogsPage = () => {
                     </p>
                   </div>
                 )}
-                
+
                 {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
                   <div>
                     <label className="font-medium text-gray-700">التفاصيل:</label>
@@ -605,7 +605,7 @@ const SystemLogsPage = () => {
                     </pre>
                   </div>
                 )}
-                
+
                 {selectedLog.userAgent && (
                   <div>
                     <label className="font-medium text-gray-700">متصفح المستخدم:</label>
