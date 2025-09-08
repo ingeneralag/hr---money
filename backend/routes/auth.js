@@ -6,11 +6,12 @@ const User = require('../models/User');
 const Employee = require('../models/Employee');
 const sendError = require('../utils/sendError');
 const { validateEmail } = require('../utils/validators');
+const { logUserLogin } = require('../middleware/logging');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hr-system-2024-default-secret-change-in-production';
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', logUserLogin, async (req, res) => {
   try {
     const { identifier, password } = req.body;
 

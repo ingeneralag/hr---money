@@ -245,7 +245,7 @@ const transactionValidation = [
       return true;
     }),
   body('type')
-    .isIn(['income', 'expense']).withMessage('نوع المعاملة يجب أن يكون income أو expense'),
+    .isIn(['income', 'expense', 'debt']).withMessage('نوع المعاملة يجب أن يكون income أو expense أو debt'),
   body('description')
     .isLength({ min: 1, max: 500 }).withMessage('الوصف يجب أن يكون بين 1 و500 حرف'),
   body('category')
@@ -332,8 +332,8 @@ const categoryValidation = [
     .isLength({ min: 2, max: 100 })
     .withMessage('اسم الفئة يجب أن يكون بين 2 و100 حرف'),
   body('type')
-    .isIn(['income', 'expense', 'both'])
-    .withMessage('نوع الفئة يجب أن يكون income أو expense أو both'),
+    .isIn(['income', 'expense', 'both', 'debt'])
+    .withMessage('نوع الفئة يجب أن يكون income أو expense أو both أو debt'),
   body('description')
     .optional().isLength({ max: 500 })
     .withMessage('الوصف يجب ألا يزيد عن 500 حرف'),

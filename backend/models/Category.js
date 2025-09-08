@@ -10,7 +10,7 @@ const CategorySchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   nameEn: { type: String },
-  type: { type: String, enum: ['income', 'expense', 'both'], required: true },
+  type: { type: String, enum: ['income', 'expense', 'both', 'debt'], required: true },
   description: { type: String },
   color: { type: String },
   icon: { type: String },

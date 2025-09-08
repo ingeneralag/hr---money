@@ -40,7 +40,7 @@ const LoginPage = ({ onLogin }) => {
 
       // استخدام fetch مباشرة بدلاً من authService لتجنب المشاكل
       const response = await fetch(
-        process.env.REACT_APP_API_URL + "/auth/login",
+        "http://localhost:5001/api/auth/login",
         {
           method: "POST",
           headers: {
@@ -110,7 +110,7 @@ const LoginPage = ({ onLogin }) => {
       console.log("🚀 دخول سريع:", credentials);
 
       const response = await fetch(
-        process.env.REACT_APP_API_URL + "/auth/login",
+        "http://localhost:5001/api/auth/login",
         {
           method: "POST",
           headers: {

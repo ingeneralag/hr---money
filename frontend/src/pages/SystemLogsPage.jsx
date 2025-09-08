@@ -1,221 +1,266 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { useNotifications } from '../components/NotificationSystem';
-import {
-  Activity,
-  Search,
-  Filter,
-  Download,
-  Eye,
-  Calendar,
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '../components/ui/select';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '../components/ui/table';
+import { Badge } from '../components/ui/badge';
+import { 
+  Activity, 
+  Search, 
+  Filter, 
+  Download, 
+  RefreshCw, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
+  Clock,
   User,
-  Settings,
-  Database,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Zap,
-  ChevronLeft,
-  ChevronRight,
-  DollarSign
+  Calendar,
+  Eye,
+  Trash2
 } from 'lucide-react';
-import { formatDate } from '../utils/formatters';
-import { logService } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 const SystemLogsPage = () => {
-  const { showSuccess, showError } = useNotifications();
   const [logs, setLogs] = useState([]);
-  const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalLogs: 0,
+    successCount: 0,
+    failedCount: 0,
+    highSeverityCount: 0,
+    criticalSeverityCount: 0
+  });
+  const [actionStats, setActionStats] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    pages: 0
+  });
+
+  // فلاتر البحث
   const [filters, setFilters] = useState({
     search: '',
     action: '',
-    resource: '',
+    severity: '',
+    status: '',
     dateFrom: '',
-    dateTo: '',
-    page: 1,
-    limit: 10000
+    dateTo: ''
   });
-  const [pagination, setPagination] = useState({});
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedLog, setSelectedLog] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
+
+  // دالة جلب اللوجات
+  const fetchLogs = useCallback(async () => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+        ...Object.fromEntries(
+          Object.entries(filters).filter(([_, value]) => value !== '')
+        )
+      });
+
+      const response = await fetch(`http://localhost:5001/api/system-logs?${queryParams}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('فشل في جلب اللوجات');
+      }
+
+      const data = await response.json();
+      setLogs(data.data);
+      setStats(data.stats);
+      setActionStats(data.actionStats);
+      setPagination(data.pagination);
+    } catch (error) {
+      toast.error('حدث خطأ في جلب اللوجات');
+      console.error('Error fetching logs:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [pagination.page, pagination.limit, filters]);
+
+  // دالة جلب الإحصائيات
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:5001/api/system-logs/stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // يمكن استخدام هذه البيانات لعرض رسوم بيانية
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  }, []);
 
   useEffect(() => {
     fetchLogs();
     fetchStats();
-  }, [filters]);
+  }, [fetchLogs, fetchStats]);
 
-  const fetchLogs = async () => {
-    try {
-      setLoading(true);
-      const response = await logService.getAll(filters);
-      if (response.success) {
-        setLogs(response.data.logs);
-        setPagination(response.data.pagination);
-      }
-    } catch (error) {
-      showError('حدث خطأ في جلب السجلات');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const response = await logService.getStats();
-      if (response.success) {
-        setStats(response.data);
-      }
-    } catch (error) {
-      showError('حدث خطأ في جلب الإحصائيات');
-    }
-  };
-
+  // دالة تحديث الفلاتر
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value,
-      page: 1
-    }));
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPagination(prev => ({ ...prev, page: 1 })); // إعادة تعيين الصفحة
   };
 
+  // دالة مسح الفلاتر
   const clearFilters = () => {
     setFilters({
       search: '',
       action: '',
-      resource: '',
+      severity: '',
+      status: '',
       dateFrom: '',
-      dateTo: '',
-      page: 1,
-      limit: 10000
+      dateTo: ''
+    });
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  // دالة تغيير الصفحة
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  // دالة تغيير عدد العناصر في الصفحة
+  const handleLimitChange = (newLimit) => {
+    setPagination(prev => ({ ...prev, limit: parseInt(newLimit), page: 1 }));
+  };
+
+
+  // دالة تنسيق التاريخ
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString('ar-EG', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
   };
 
-  const exportLogs = async (format = 'json') => {
-    try {
-      const blob = await logService.export(format);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `system-logs-${new Date().toISOString().split('T')[0]}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      showSuccess('تم تصدير السجلات بنجاح');
-    } catch (error) {
-      showError('حدث خطأ في تصدير السجلات');
-    }
+  // دالة تنسيق العملة
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('ar-EG', {
+      style: 'currency',
+      currency: 'EGP',
+      minimumFractionDigits: 0
+    }).format(amount);
   };
 
-  const clearLogs = async () => {
-    if (window.confirm('هل أنت متأكد من حذف جميع السجلات؟ هذا الإجراء لا يمكن التراجع عنه.')) {
-      try {
-        await logService.clear();
-        fetchLogs();
-        fetchStats();
-        showSuccess('تم حذف جميع السجلات بنجاح');
-      } catch (error) {
-        showError('حدث خطأ في حذف السجلات');
-      }
-    }
-  };
-
-  const getActionIcon = (action) => {
-    switch (action) {
-      case 'إضافة': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'تعديل': return <Settings className="w-4 h-4 text-blue-500" />;
-      case 'حذف': return <XCircle className="w-4 h-4 text-red-500" />;
-      case 'عرض': return <Eye className="w-4 h-4 text-gray-500" />;
-      case 'تسجيل دخول': return <User className="w-4 h-4 text-green-600" />;
-      case 'تسجيل خروج': return <User className="w-4 h-4 text-gray-600" />;
-      default: return <Zap className="w-4 h-4 text-yellow-500" />;
-    }
-  };
-
+  // دالة الحصول على لون الحالة
   const getStatusColor = (status) => {
     switch (status) {
-      case 'نجح': return 'text-green-600 bg-green-50';
-      case 'فشل': return 'text-red-600 bg-red-50';
-      case 'تحذير': return 'text-yellow-600 bg-yellow-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'success': return 'bg-green-100 text-green-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getFinancialDetails = (log) => {
-    if (log.resource !== 'المعاملات المالية' || !log.details || !log.details.data) {
-      return <span className="text-gray-400 text-xs">-</span>;
+  // دالة الحصول على لون مستوى الأهمية
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case 'critical': return 'bg-red-100 text-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
+  };
 
-    const data = log.details.data;
-    const amount = data.amount;
-    const type = data.type;
-    const description = data.description;
-    const category = data.category;
+  // دالة الحصول على أيقونة العملية
+  const getActionIcon = (action) => {
+    switch (action) {
+      case 'transaction_created': return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case 'transaction_updated': return <RefreshCw className="w-4 h-4 text-blue-600" />;
+      case 'transaction_deleted': return <Trash2 className="w-4 h-4 text-red-600" />;
+      case 'debt_payment': return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case 'debt_full_payment': return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case 'debt_partial_payment': return <Clock className="w-4 h-4 text-yellow-600" />;
+      case 'treasury_updated': return <Activity className="w-4 h-4 text-blue-600" />;
+      case 'user_login': return <User className="w-4 h-4 text-blue-600" />;
+      default: return <Activity className="w-4 h-4 text-gray-600" />;
+    }
+  };
 
-    if (!amount) return <span className="text-gray-400 text-xs">-</span>;
-
-    return (
-      <div className="space-y-1">
-        <div className={`font-bold text-sm ${type === 'دخل' ? 'text-green-600' : 'text-red-600'}`}>
-          {type === 'دخل' ? '+' : '-'} {amount.toLocaleString('en-US')} ج.م
-        </div>
-        <div className="text-xs text-gray-600">
-          {type} - {category}
-        </div>
-        {description && (
-          <div className="text-xs text-gray-500 truncate max-w-32" title={description}>
-            {description}
-          </div>
-        )}
-      </div>
-    );
+  // دالة ترجمة نوع العملية
+  const translateAction = (action) => {
+    const translations = {
+      'transaction_created': 'إنشاء معاملة',
+      'transaction_updated': 'تحديث معاملة',
+      'transaction_deleted': 'حذف معاملة',
+      'debt_payment': 'سداد مديونية',
+      'debt_full_payment': 'سداد كامل',
+      'debt_partial_payment': 'سداد جزئي',
+      'treasury_updated': 'تحديث الخزنة',
+      'user_login': 'تسجيل دخول',
+      'user_logout': 'تسجيل خروج',
+      'category_created': 'إنشاء فئة',
+      'category_updated': 'تحديث فئة',
+      'category_deleted': 'حذف فئة',
+      'system_cleanup': 'تنظيف النظام'
+    };
+    return translations[action] || action;
   };
 
   return (
-    <div className="p-6 space-y-6" dir="rtl">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto p-6 space-y-6">
+      {/* العنوان */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Activity className="w-8 h-8 text-blue-600" />
-            سجل أنشطة النظام
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            لوجات النظام
           </h1>
-          <p className="text-gray-600 mt-1">مراقبة وتتبع جميع العمليات والأنشطة</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            تتبع جميع العمليات والأنشطة في النظام
+          </p>
         </div>
-
         <div className="flex gap-2">
-          <Button
-            onClick={() => exportLogs('json')}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            تصدير JSON
-          </Button>
-          <Button
-            onClick={() => exportLogs('csv')}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            تصدير CSV
+          <Button onClick={fetchLogs} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            تحديث
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* الإحصائيات */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">إجمالي السجلات</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.total || 0}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">إجمالي اللوجات</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {stats.totalLogs.toLocaleString()}
+                </p>
               </div>
-              <Database className="w-8 h-8 text-blue-500 opacity-20" />
+              <Activity className="w-8 h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
@@ -224,10 +269,12 @@ const SystemLogsPage = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">المعاملات المالية</p>
-                <p className="text-2xl font-bold text-green-600">{stats.byResource?.['المعاملات المالية'] || 0}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">عمليات ناجحة</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats.successCount.toLocaleString()}
+                </p>
               </div>
-              <DollarSign className="w-8 h-8 text-green-500 opacity-20" />
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
@@ -236,10 +283,12 @@ const SystemLogsPage = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">اليوم</p>
-                <p className="text-2xl font-bold text-orange-600">{stats.today || 0}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">عمليات فاشلة</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {stats.failedCount.toLocaleString()}
+                </p>
               </div>
-              <Calendar className="w-8 h-8 text-orange-500 opacity-20" />
+              <XCircle className="w-8 h-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
@@ -248,377 +297,266 @@ const SystemLogsPage = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">هذا الشهر</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.thisMonth || 0}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">أهمية عالية</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {stats.highSeverityCount.toLocaleString()}
+                </p>
               </div>
-              <Activity className="w-8 h-8 text-purple-500 opacity-20" />
+              <AlertTriangle className="w-8 h-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">حرجة</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {stats.criticalSeverityCount.toLocaleString()}
+                </p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* فلاتر البحث */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              فلاتر البحث
-            </CardTitle>
-            <Button
-              onClick={() => setShowFilters(!showFilters)}
-              variant="outline"
-              size="sm"
-            >
-              {showFilters ? 'إخفاء' : 'إظهار'} الفلاتر
-            </Button>
-          </div>
-        </CardHeader>
-        {showFilters && (
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">البحث</label>
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={filters.search}
-                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                    placeholder="البحث في السجلات..."
-                    className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">العملية</label>
-                <select
-                  value={filters.action}
-                  onChange={(e) => handleFilterChange('action', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">جميع العمليات</option>
-                  <option value="إضافة">إضافة</option>
-                  <option value="تعديل">تعديل</option>
-                  <option value="حذف">حذف</option>
-                  <option value="عرض">عرض</option>
-                  <option value="تسجيل دخول">تسجيل دخول</option>
-                  <option value="تسجيل خروج">تسجيل خروج</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">المورد</label>
-                <select
-                  value={filters.resource}
-                  onChange={(e) => handleFilterChange('resource', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">جميع الموارد</option>
-                  <option value="المعاملات المالية">المعاملات المالية</option>
-                  <option value="الموظفين">الموظفين</option>
-                  <option value="الرواتب">الرواتب</option>
-                  <option value="واتساب">واتساب</option>
-                  <option value="سجل النظام">سجل النظام</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">من تاريخ</label>
-                <input
-                  type="datetime-local"
-                  value={filters.dateFrom}
-                  onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">إلى تاريخ</label>
-                <input
-                  type="datetime-local"
-                  value={filters.dateTo}
-                  onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button onClick={fetchLogs} className="flex items-center gap-2">
-                <Search className="w-4 h-4" />
-                بحث
-              </Button>
-              <Button onClick={clearFilters} variant="outline">
-                مسح الفلاتر
-              </Button>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Logs Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>السجلات ({pagination.total || 0})</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">
-                صفحة {pagination.current || 1} من {pagination.pages || 1}
-              </span>
-            </div>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            فلاتر البحث
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div>
+              <Label htmlFor="search">البحث</Label>
+              <Input
+                id="search"
+                placeholder="ابحث في التفاصيل..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+              />
             </div>
-          ) : logs.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">لا توجد سجلات متاحة</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      التاريخ والوقت
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      المستخدم
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      العملية
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      المورد
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      التفاصيل المالية
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      الحالة
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      الإجراءات
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(log.timestamp)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-gray-400" />
-                          {log.user || 'غير معروف'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="flex items-center gap-2">
-                          {getActionIcon(log.action)}
-                          {log.action}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {log.resource}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {getFinancialDetails(log)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(log.status)}`}>
-                          {log.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <Button
-                          onClick={() => {
-                            setSelectedLog(log);
-                            setShowDetails(true);
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-1"
-                        >
-                          <Eye className="w-3 h-3" />
-                          تفاصيل
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
 
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-gray-700">
-                عرض {((pagination.current - 1) * filters.limit) + 1} إلى{' '}
-                {Math.min(pagination.current * filters.limit, pagination.total)} من{' '}
-                {pagination.total} سجل
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => handleFilterChange('page', filters.page - 1)}
-                  disabled={!pagination.hasPrev}
-                  variant="outline"
-                  size="sm"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                  السابق
-                </Button>
-                <Button
-                  onClick={() => handleFilterChange('page', filters.page + 1)}
-                  disabled={!pagination.hasNext}
-                  variant="outline"
-                  size="sm"
-                >
-                  التالي
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-              </div>
+            <div>
+              <Label htmlFor="action">نوع العملية</Label>
+              <Select value={filters.action} onValueChange={(value) => handleFilterChange('action', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="جميع العمليات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">جميع العمليات</SelectItem>
+                  <SelectItem value="transaction_created">إنشاء معاملة</SelectItem>
+                  <SelectItem value="transaction_updated">تحديث معاملة</SelectItem>
+                  <SelectItem value="transaction_deleted">حذف معاملة</SelectItem>
+                  <SelectItem value="debt_payment">سداد مديونية</SelectItem>
+                  <SelectItem value="debt_full_payment">سداد كامل</SelectItem>
+                  <SelectItem value="debt_partial_payment">سداد جزئي</SelectItem>
+                  <SelectItem value="treasury_updated">تحديث الخزنة</SelectItem>
+                  <SelectItem value="user_login">تسجيل دخول</SelectItem>
+                  <SelectItem value="user_logout">تسجيل خروج</SelectItem>
+                  <SelectItem value="category_created">إنشاء فئة</SelectItem>
+                  <SelectItem value="category_updated">تحديث فئة</SelectItem>
+                  <SelectItem value="category_deleted">حذف فئة</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
+
+            <div>
+              <Label htmlFor="severity">مستوى الأهمية</Label>
+              <Select value={filters.severity} onValueChange={(value) => handleFilterChange('severity', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="جميع المستويات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">جميع المستويات</SelectItem>
+                  <SelectItem value="low">منخفض</SelectItem>
+                  <SelectItem value="medium">متوسط</SelectItem>
+                  <SelectItem value="high">عالي</SelectItem>
+                  <SelectItem value="critical">حرج</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="status">الحالة</Label>
+              <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="جميع الحالات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">جميع الحالات</SelectItem>
+                  <SelectItem value="success">ناجح</SelectItem>
+                  <SelectItem value="failed">فاشل</SelectItem>
+                  <SelectItem value="pending">في الانتظار</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="dateFrom">من تاريخ</Label>
+              <Input
+                id="dateFrom"
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="dateTo">إلى تاريخ</Label>
+              <Input
+                id="dateTo"
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <Button onClick={clearFilters} variant="outline" size="sm">
+              مسح الفلاتر
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Details Modal */}
-      {showDetails && selectedLog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">تفاصيل السجل</h3>
-                <Button
-                  onClick={() => setShowDetails(false)}
-                  variant="outline"
-                  size="sm"
-                >
-                  إغلاق
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-medium text-gray-700">التاريخ والوقت:</label>
-                    <p className="text-gray-900">{formatDate(selectedLog.timestamp)}</p>
-                  </div>
-                  <div>
-                    <label className="font-medium text-gray-700">المستخدم:</label>
-                    <p className="text-gray-900">{selectedLog.user || 'غير معروف'}</p>
-                  </div>
-                  <div>
-                    <label className="font-medium text-gray-700">العملية:</label>
-                    <p className="text-gray-900 flex items-center gap-2">
-                      {getActionIcon(selectedLog.action)}
-                      {selectedLog.action}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="font-medium text-gray-700">المورد:</label>
-                    <p className="text-gray-900">{selectedLog.resource}</p>
-                  </div>
-                  <div>
-                    <label className="font-medium text-gray-700">الحالة:</label>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedLog.status)}`}>
-                      {selectedLog.status}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="font-medium text-gray-700">الـ IP:</label>
-                    <p className="text-gray-900">{selectedLog.ip || 'غير متاح'}</p>
-                  </div>
-                </div>
-
-                {/* Financial Details Section */}
-                {selectedLog.resource === 'المعاملات المالية' && selectedLog.details && selectedLog.details.data && (
-                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                    <h4 className="text-lg font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                      <DollarSign className="w-5 h-5" />
-                      التفاصيل المالية
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="font-medium text-blue-700">المبلغ:</label>
-                        <p className={`text-lg font-bold ${selectedLog.details.data.type === 'دخل' ? 'text-green-600' : 'text-red-600'}`}>
-                          {selectedLog.details.data.type === 'دخل' ? '+' : '-'} {selectedLog.details.data.amount?.toLocaleString('en-US')} ج.م
-                        </p>
-                      </div>
-                      <div>
-                        <label className="font-medium text-blue-700">نوع المعاملة:</label>
-                        <p className={`font-semibold ${selectedLog.details.data.type === 'دخل' ? 'text-green-600' : 'text-red-600'}`}>
-                          {selectedLog.details.data.type}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="font-medium text-blue-700">الفئة:</label>
-                        <p className="text-blue-900">{selectedLog.details.data.category}</p>
-                      </div>
-                      <div>
-                        <label className="font-medium text-blue-700">تاريخ المعاملة:</label>
-                        <p className="text-blue-900">{selectedLog.details.data.date}</p>
-                      </div>
-                      {selectedLog.details.data.description && (
-                        <div className="col-span-2">
-                          <label className="font-medium text-blue-700">الوصف:</label>
-                          <p className="text-blue-900 bg-white p-2 rounded border">{selectedLog.details.data.description}</p>
-                        </div>
-                      )}
-                      <div>
-                        <label className="font-medium text-blue-700">معرف المعاملة:</label>
-                        <p className="text-blue-900 font-mono">{selectedLog.details.data.id || 'غير متاح'}</p>
-                      </div>
-                      <div>
-                        <label className="font-medium text-blue-700">حالة المعاملة:</label>
-                        <p className="text-blue-900">{selectedLog.details.data.status || 'مكتمل'}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedLog.endpoint && (
-                  <div>
-                    <label className="font-medium text-gray-700">المسار:</label>
-                    <p className="text-gray-900 font-mono text-sm bg-gray-100 p-2 rounded">
-                      {selectedLog.method} {selectedLog.endpoint}
-                    </p>
-                  </div>
-                )}
-
-                {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
-                  <div>
-                    <label className="font-medium text-gray-700">التفاصيل:</label>
-                    <pre className="text-sm bg-gray-100 p-3 rounded overflow-x-auto">
-                      {JSON.stringify(selectedLog.details, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
-                {selectedLog.userAgent && (
-                  <div>
-                    <label className="font-medium text-gray-700">متصفح المستخدم:</label>
-                    <p className="text-gray-900 text-sm">{selectedLog.userAgent}</p>
-                  </div>
-                )}
-              </div>
+      {/* جدول اللوجات */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>سجل العمليات</CardTitle>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="limit">عناصر في الصفحة:</Label>
+              <Select value={pagination.limit.toString()} onValueChange={handleLimitChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </div>
-      )}
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center py-8">
+              <RefreshCw className="w-6 h-6 animate-spin" />
+              <span className="mr-2">جاري التحميل...</span>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>التاريخ والوقت</TableHead>
+                      <TableHead>نوع العملية</TableHead>
+                      <TableHead>التفاصيل</TableHead>
+                      <TableHead>المستخدم</TableHead>
+                      <TableHead>الحالة</TableHead>
+                      <TableHead>الأهمية</TableHead>
+                      <TableHead>الإجراءات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.map((log) => (
+                      <TableRow key={log._id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
+                            {formatDate(log.createdAt)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getActionIcon(log.action)}
+                            {translateAction(log.action)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="truncate" title={log.details}>
+                            {log.details}
+                          </div>
+                          {log.metadata?.migrated && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              (من المعاملات الموجودة)
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-gray-500" />
+                            {log.username}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(log.status)}>
+                            {log.status === 'success' ? 'ناجح' : 
+                             log.status === 'failed' ? 'فاشل' : 'في الانتظار'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getSeverityColor(log.severity)}>
+                            {log.severity === 'critical' ? 'حرج' :
+                             log.severity === 'high' ? 'عالي' :
+                             log.severity === 'medium' ? 'متوسط' : 'منخفض'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* التصفح */}
+              {pagination.pages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    عرض {((pagination.page - 1) * pagination.limit) + 1} إلى {Math.min(pagination.page * pagination.limit, pagination.total)} من {pagination.total} لوج
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      disabled={pagination.page === 1}
+                    >
+                      السابق
+                    </Button>
+                    <span className="px-3 py-1 text-sm">
+                      صفحة {pagination.page} من {pagination.pages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      disabled={pagination.page === pagination.pages}
+                    >
+                      التالي
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default SystemLogsPage; 
+export default SystemLogsPage;

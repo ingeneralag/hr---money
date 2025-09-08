@@ -217,6 +217,25 @@ function App() {
                 }
               />
 
+              {/* لوجات النظام */}
+              <Route
+                path="/system-logs"
+                element={
+                  !user ? (
+                    <Navigate to="/login" replace />
+                  ) : user.role === "admin" ? (
+                    <Layout user={user} onLogout={handleLogout}>
+                      <SystemLogsPage />
+                    </Layout>
+                  ) : (
+                    <Navigate
+                      to={user.role === "admin" ? "/" : "/me/overview"}
+                      replace
+                    />
+                  )
+                }
+              />
+
               {/* موافقات المعاملات المالية */}
               <Route
                 path="/approvals"

@@ -206,6 +206,10 @@ bower_components
 # Compiled binary addons
 build/Release
 
+# MongoDB binaries
+mongodb-*/bin/
+mongodb-*/
+
 # TypeScript cache
 *.tsbuildinfo
 

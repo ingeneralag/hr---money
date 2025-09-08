@@ -9,6 +9,9 @@ module.exports = function(app) {
       changeOrigin: true,
       secure: false,
       logLevel: 'debug', // تفعيل التسجيل للتتبع
+      pathRewrite: {
+        '^/api': '/api' // الحفاظ على /api في المسار
+      },
       onProxyReq: (proxyReq, req, res) => {
         console.log('🔄 Proxying request:', req.method, req.url, '-> http://localhost:5001' + req.url);
       },
