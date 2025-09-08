@@ -7,18 +7,18 @@ const Client = require('./models/Client');
 const Category = require('./models/Category');
 
 // استخدام قاعدة بيانات Atlas
-const MONGO_URI = process.env.MONGO_URI || 
-                  process.env.MONGODB_URI || 
-                  "mongodb+srv://Anter:anter1234@anter.1cdaq.mongodb.net/?retryWrites=true&w=majority&appName=Anter";
+const MONGO_URI = process.env.MONGO_URI ||
+  process.env.MONGODB_URI ||
+  "mongodb+srv://Anter:anter1234@anter.1cdaq.mongodb.net/?retryWrites=true&w=majority&appName=Anter";
 
 const resetDatabase = async () => {
   try {
     console.log('🚨 تحذير: سيتم حذف جميع البيانات من قاعدة البيانات!');
     console.log('⏳ انتظار 5 ثوان للإلغاء إذا لزم الأمر...');
-    
+
     // انتظار 5 ثوان للسماح بالإلغاء
     await new Promise(resolve => setTimeout(resolve, 5000));
-    
+
     // الاتصال بقاعدة البيانات
     await mongoose.connect(MONGO_URI, {
       useNewUrlParser: true,
@@ -33,7 +33,7 @@ const resetDatabase = async () => {
     await Transaction.deleteMany({});
     await Client.deleteMany({});
     await Category.deleteMany({});
-    
+
     console.log('✅ تم حذف جميع البيانات');
 
     // إنشاء مستخدم admin جديد
@@ -48,14 +48,13 @@ const resetDatabase = async () => {
       lastName: 'العام',
       phone: '01234567890',
       personalInfo: {
-        nationalId: '12345678901234',
         address: 'القاهرة، مصر',
         birthDate: new Date('1980-01-01'),
         gender: 'male',
         maritalStatus: 'married'
       }
     });
-    
+
     await adminUser.save();
     console.log('✅ تم إنشاء مستخدم admin');
 
@@ -73,18 +72,18 @@ const resetDatabase = async () => {
       const category = new Category(catData);
       await category.save();
     }
-    
+
     console.log('✅ تم إنشاء التصنيفات الأساسية');
 
     // إغلاق الاتصال
     await mongoose.disconnect();
     console.log('✅ تم إغلاق الاتصال بقاعدة البيانات');
-    
+
     console.log('\n🎉 تم إعادة تعيين قاعدة البيانات بنجاح!');
     console.log('\n🔑 بيانات تسجيل الدخول:');
     console.log('Username: admin');
     console.log('Password: admin123');
-    
+
     process.exit(0);
   } catch (error) {
     console.error('❌ خطأ في إعادة تعيين قاعدة البيانات:', error);

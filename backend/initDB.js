@@ -4,14 +4,14 @@ const User = require('./models/User');
 const Employee = require('./models/Employee');
 
 // استخدام قاعدة بيانات Atlas مع إعدادات محدثة
-const MONGO_URI = process.env.MONGO_URI || 
-                  process.env.MONGODB_URI || 
-                  "mongodb+srv://Anter:anter1234@anter.1cdaq.mongodb.net/?retryWrites=true&w=majority&appName=Anter";
+const MONGO_URI = process.env.MONGO_URI ||
+  process.env.MONGODB_URI ||
+  "mongodb+srv://Anter:anter1234@anter.1cdaq.mongodb.net/?retryWrites=true&w=majority&appName=Anter";
 
 async function initializeDatabase() {
   try {
     console.log('🚀 بدء تهيئة قاعدة البيانات...');
-    
+
     // تحديد خيارات الاتصال
     const options = {
       useNewUrlParser: true,
@@ -21,16 +21,16 @@ async function initializeDatabase() {
       connectTimeoutMS: 10000,
       socketTimeoutMS: 45000,
     };
-    
+
     // محاولة الاتصال بـ MongoDB
     console.log('📡 محاولة الاتصال بـ MongoDB...');
     await mongoose.connect(MONGO_URI, options);
     console.log('✅ تم الاتصال بقاعدة البيانات بنجاح!');
-    
+
     // التحقق من وجود مستخدم admin
     console.log('👤 التحقق من وجود مستخدم admin...');
     const existingAdmin = await User.findOne({ username: 'admin' });
-    
+
     if (!existingAdmin) {
       console.log('👤 إنشاء مستخدم admin...');
       const adminUser = new User({
@@ -43,27 +43,26 @@ async function initializeDatabase() {
         lastName: 'العام',
         phone: '01234567890',
         personalInfo: {
-          nationalId: '12345678901234',
           address: 'القاهرة، مصر',
           birthDate: new Date('1980-01-01'),
           gender: 'male',
           maritalStatus: 'married'
         }
       });
-      
+
       await adminUser.save();
       console.log('✅ تم إنشاء مستخدم admin بنجاح');
     } else {
       console.log('✅ مستخدم admin موجود بالفعل');
     }
-    
+
     // التحقق من وجود موظفين
     console.log('👥 التحقق من وجود موظفين...');
     const existingEmployees = await Employee.countDocuments();
-    
+
     if (existingEmployees === 0) {
       console.log('👥 إنشاء بيانات موظفين تجريبية...');
-      
+
       const sampleEmployees = [
         {
           employeeNumber: 'EMP001',
@@ -81,7 +80,6 @@ async function initializeDatabase() {
             housing: 2000,
             meal: 500
           },
-          nationalId: '29012345678901',
           birthDate: new Date('1990-01-15'),
           gender: 'ذكر',
           maritalStatus: 'أعزب',
@@ -124,7 +122,6 @@ async function initializeDatabase() {
             housing: 1500,
             meal: 400
           },
-          nationalId: '29011234567890',
           birthDate: new Date('1992-03-20'),
           gender: 'أنثى',
           maritalStatus: 'متزوجة',
@@ -167,7 +164,6 @@ async function initializeDatabase() {
             housing: 2500,
             meal: 600
           },
-          nationalId: '28512345678901',
           birthDate: new Date('1985-07-10'),
           gender: 'ذكر',
           maritalStatus: 'متزوج',
@@ -195,32 +191,32 @@ async function initializeDatabase() {
           ]
         }
       ];
-      
+
       for (const empData of sampleEmployees) {
         const employee = new Employee(empData);
         await employee.save();
       }
-      
+
       console.log('✅ تم إنشاء الموظفين التجريبيين بنجاح');
     } else {
       console.log(`✅ يوجد ${existingEmployees} موظف في قاعدة البيانات بالفعل`);
     }
-    
+
     // عرض إحصائيات
     const userCount = await User.countDocuments();
     const employeeCount = await Employee.countDocuments();
-    
+
     console.log('\n📊 إحصائيات قاعدة البيانات:');
     console.log(`👤 عدد المستخدمين: ${userCount}`);
     console.log(`👥 عدد الموظفين: ${employeeCount}`);
-    
+
     console.log('\n✅ تم التحقق من قاعدة البيانات بنجاح!');
     console.log('\n🔑 بيانات تسجيل الدخول:');
     console.log('Username: admin');
     console.log('Password: admin123');
-    
+
     return true;
-    
+
   } catch (error) {
     console.error('❌ خطأ في تهيئة قاعدة البيانات:', error);
     return false;

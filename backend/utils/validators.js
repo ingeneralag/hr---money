@@ -19,16 +19,6 @@ exports.validateEgyptianPhone = (phone) => {
 };
 
 /**
- * التحقق من صحة الرقم القومي المصري
- * @param {string} nationalId - الرقم القومي المراد التحقق منه
- * @returns {boolean} - صحة الرقم القومي
- */
-exports.validateEgyptianNationalId = (nationalId) => {
-  const re = /^[0-9]{14}$/;
-  return re.test(nationalId);
-};
-
-/**
  * التحقق من قوة كلمة المرور
  * @param {string} password - كلمة المرور المراد التحقق منها
  * @returns {boolean} - قوة كلمة المرور

@@ -40,11 +40,11 @@ router.post('/login', logUserLogin, async (req, res) => {
     // Check approval status for employees
     if (user.role === 'employee') {
       let employee = await Employee.findOne({ userId: user._id });
-      
+
       if (!employee) {
         employee = await Employee.findOne({ email: user.email });
       }
-      
+
       if (!employee) {
         console.log(`⚠️ لم يتم العثور على موظف للمستخدم: ${user.username} (${user._id})`);
         return sendError(res, 403, 'لم يتم العثور على بيانات الموظف', 'FORBIDDEN');
@@ -73,13 +73,13 @@ router.post('/login', logUserLogin, async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { 
+      {
         id: user._id,
-        username: user.username, 
+        username: user.username,
         role: user.role,
-        email: user.email 
-      }, 
-      JWT_SECRET, 
+        email: user.email
+      },
+      JWT_SECRET,
       { expiresIn: '24h' }
     );
 
@@ -119,16 +119,16 @@ router.get('/verify', async (req, res) => {
     if (!auth || !auth.startsWith('Bearer ')) {
       return sendError(res, 401, 'التوكن غير موجود', 'UNAUTHORIZED');
     }
-    
+
     const token = auth.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-    
+
     // Verify user still exists
     const user = await User.findById(decoded.id);
     if (!user) {
       return sendError(res, 401, 'المستخدم غير موجود', 'UNAUTHORIZED');
     }
-    
+
     res.json({
       success: true,
       message: 'التوكن صالح',
@@ -179,7 +179,7 @@ router.post('/register', async (req, res) => {
     // Check for existing user
     const existingUser = await User.findOne({
       $or: [
-        { username: username }, 
+        { username: username },
         { email: email }
       ]
     });
@@ -231,7 +231,6 @@ router.post('/register', async (req, res) => {
       department_id: department_id,
       phone: user.phone,
       position: user.position,
-      nationalId: `${Date.now()}${Math.random().toString(36).substring(2, 5)}`,
       birthDate: birthDate || null,
       startDate: new Date(),
       status: 'تحت التدريب',
@@ -288,7 +287,7 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    
+
     // Handle duplicate errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
@@ -298,17 +297,15 @@ router.post('/register', async (req, res) => {
         return sendError(res, 409, 'البريد الإلكتروني مستخدم من قبل', 'CONFLICT');
       } else if (field === 'phone') {
         return sendError(res, 409, 'رقم الهاتف مستخدم من قبل', 'CONFLICT');
-      } else if (field === 'nationalId') {
-        return sendError(res, 409, 'الرقم القومي مستخدم من قبل', 'CONFLICT');
       }
     }
-    
+
     // Handle validation errors
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return sendError(res, 400, errors.join(', '), 'VALIDATION_ERROR');
     }
-    
+
     sendError(res, 500, 'حدث خطأ أثناء تسجيل المستخدم', 'SERVER_ERROR');
   }
 });
@@ -317,7 +314,7 @@ router.post('/register', async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     if (!email) {
       return sendError(res, 400, 'البريد الإلكتروني مطلوب', 'VALIDATION_ERROR');
     }
@@ -389,14 +386,14 @@ router.post('/reset-password', async (req, res) => {
 // Temporary endpoint to reset yarabbb password
 router.post('/temp-reset-yarabbb', async (req, res) => {
   try {
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       $or: [
         { username: 'yarabbb' },
         { name: 'yarabbb' },
         { firstName: 'yarabbb' }
       ]
     });
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'المستخدم غير موجود' });
     }
@@ -406,8 +403,8 @@ router.post('/temp-reset-yarabbb', async (req, res) => {
     user.password = await bcrypt.hash('yarabbb123', salt);
     await user.save();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'تم إعادة تعيين كلمة المرور بنجاح',
       username: user.username || user.name,
       newPassword: 'yarabbb123',
@@ -423,8 +420,8 @@ router.post('/temp-reset-yarabbb', async (req, res) => {
 router.get('/temp-list-users', async (req, res) => {
   try {
     const users = await User.find({}, 'username name firstName lastName email _id').limit(10);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       users: users,
       count: users.length
     });
@@ -466,14 +463,14 @@ router.get('/generate-demo-token', async (req, res) => {
 router.get('/debug', async (req, res) => {
   try {
     console.log('🔍 Debug endpoint called');
-    
+
     // Check database connection
     const isConnected = req.isMongoConnected;
     console.log('📊 Database connected:', isConnected);
-    
+
     let userCount = 'N/A';
     let adminUser = null;
-    
+
     if (isConnected) {
       try {
         userCount = await User.countDocuments();
@@ -484,14 +481,14 @@ router.get('/debug', async (req, res) => {
         console.error('❌ Database query error:', dbError.message);
       }
     }
-    
+
     // Test JWT
     const testToken = jwt.sign(
       { test: 'debug', timestamp: Date.now() },
       JWT_SECRET,
       { expiresIn: '1h' }
     );
-    
+
     let tokenVerified = false;
     try {
       jwt.verify(testToken, JWT_SECRET);
@@ -499,7 +496,7 @@ router.get('/debug', async (req, res) => {
     } catch (jwtError) {
       console.error('❌ JWT test failed:', jwtError.message);
     }
-    
+
     const debugInfo = {
       success: true,
       timestamp: new Date().toISOString(),
@@ -523,7 +520,7 @@ router.get('/debug', async (req, res) => {
         nodeEnv: process.env.NODE_ENV || 'development'
       }
     };
-    
+
     if (adminUser) {
       debugInfo.admin = {
         id: adminUser._id,
@@ -533,10 +530,10 @@ router.get('/debug', async (req, res) => {
         approvalStatus: adminUser.approvalStatus
       };
     }
-    
+
     console.log('📋 Debug info generated:', JSON.stringify(debugInfo, null, 2));
     res.json(debugInfo);
-    
+
   } catch (error) {
     console.error('❌ Debug endpoint error:', error);
     res.status(500).json({
@@ -553,34 +550,34 @@ router.post('/test-login', async (req, res) => {
   try {
     console.log('🧪 Test login endpoint called');
     const { username, password } = req.body;
-    
+
     if (!req.isMongoConnected) {
       return sendError(res, 503, 'قاعدة البيانات غير متصلة', 'DATABASE_DISCONNECTED');
     }
-    
+
     if (!username || !password) {
       return sendError(res, 400, 'اسم المستخدم وكلمة المرور مطلوبان', 'VALIDATION_ERROR');
     }
-    
+
     console.log(`🔍 Looking for user: ${username}`);
     const user = await User.findOne({ username });
     if (!user) {
       console.log('❌ User not found');
       return sendError(res, 401, 'المستخدم غير موجود', 'USER_NOT_FOUND');
     }
-    
+
     console.log('✅ User found:', user.username);
     console.log('🔑 Checking password...');
-    
+
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       console.log('❌ Password mismatch');
       return sendError(res, 401, 'كلمة المرور غير صحيحة', 'INVALID_PASSWORD');
     }
-    
+
     console.log('✅ Password correct');
     console.log('🎫 Generating token...');
-    
+
     const token = jwt.sign(
       {
         id: user._id,
@@ -591,9 +588,9 @@ router.post('/test-login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
-    
+
     console.log('✅ Token generated successfully');
-    
+
     res.json({
       success: true,
       message: 'تم تسجيل الدخول بنجاح (اختبار)',
@@ -610,7 +607,7 @@ router.post('/test-login', async (req, res) => {
         jwtSecret: JWT_SECRET.substring(0, 10) + '...'
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Test login error:', error);
     sendError(res, 500, 'خطأ في اختبار تسجيل الدخول', 'TEST_LOGIN_ERROR');

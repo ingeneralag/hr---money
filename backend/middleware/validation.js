@@ -171,13 +171,6 @@ const employeeValidation = [
     }),
 
   // معلومات شخصية - كلها اختيارية
-  body('nationalId')
-    .optional()
-    .custom((value) => {
-      if (!value) return true;
-      return value.length >= 10 && value.length <= 20;
-    })
-    .withMessage('الرقم القومي غير صحيح'),
   body('birthDate')
     .optional()
     .custom((value) => {

@@ -23,7 +23,7 @@ async function createTestEmployee() {
   try {
     // التحقق من وجود الموظف
     const existingEmployee = await Employee.findOne({ email: 'fatima@company.com' });
-    
+
     if (existingEmployee) {
       console.log('✅ الموظف التجريبي موجود بالفعل');
       console.log(`📋 الاسم: ${existingEmployee.name}`);
@@ -72,7 +72,6 @@ async function createTestEmployee() {
       },
       skills: ['المحاسبة', 'Excel المتقدم', 'إدارة الوقت'],
       directManager: 'أحمد محمد علي',
-      nationalId: '29203151234567',
       birthDate: new Date('1992-03-15'),
       gender: 'أنثى',
       maritalStatus: 'متزوجة',
@@ -85,15 +84,15 @@ async function createTestEmployee() {
     });
 
     await testEmployee.save();
-    
+
     console.log('✅ تم إنشاء الموظف التجريبي بنجاح');
     console.log(`📋 الاسم: ${testEmployee.name}`);
     console.log(`📧 البريد: ${testEmployee.email}`);
     console.log(`🆔 رقم الموظف: ${testEmployee.employeeNumber}`);
     console.log(`🔑 كلمة المرور الافتراضية: 123456`);
-    
+
     return testEmployee;
-    
+
   } catch (error) {
     console.error('❌ خطأ في إنشاء الموظف:', error);
     throw error;
@@ -104,13 +103,13 @@ async function createTestEmployee() {
 async function main() {
   await connectDB();
   await createTestEmployee();
-  
+
   console.log('\n🎯 يمكنك الآن اختبار نظام المصادقة باستخدام:');
   console.log('📧 البريد الإلكتروني: fatima@company.com');
   console.log('🆔 رقم الموظف: EMP-2024-001');
   console.log('👤 الاسم: فاطمة أحمد محمد');
   console.log('🔑 كلمة المرور: 123456');
-  
+
   mongoose.connection.close();
 }
 
