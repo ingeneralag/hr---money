@@ -1,4 +1,48 @@
 import React, { useState, useEffect } from 'react'
+
+// CSS مخصص للقائمة المتنقلة
+const mobileMenuStyles = `
+  .mobile-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 50%, #ffffff 100%);
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    backdrop-filter: blur(8px);
+    animation: slideInFromTop 0.2s ease-out;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .dark .mobile-menu {
+    background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #1f2937 100%);
+    border-bottom: 1px solid #4b5563;
+  }
+  
+  @keyframes slideInFromTop {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .mobile-menu-button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .mobile-menu-item {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+`
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -24,6 +68,30 @@ const NavigationHeader = () => {
   const location = useLocation()
   const [currentUser, setCurrentUser] = useState(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  // إغلاق القائمة عند النقر خارجها
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isMobileMenuOpen && !event.target.closest('.mobile-menu') && !event.target.closest('[data-mobile-menu-button]')) {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isMobileMenuOpen])
+
+  // إغلاق القائمة عند تغيير حجم الشاشة
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -81,6 +149,13 @@ const NavigationHeader = () => {
       roles: ['admin']
     },
     {
+      id: 'system-logs',
+      title: 'لوجات النظام',
+      icon: Activity,
+      path: '/system-logs',
+      roles: ['admin']
+    },
+    {
       id: 'me',
       title: 'حسابي الشخصي',
       icon: UserCircle,
@@ -135,8 +210,40 @@ const NavigationHeader = () => {
     setIsMobileMenuOpen(false)
   }
 
+  const toggleMobileMenu = () => {
+    console.log('🔄 Toggling mobile menu:', !isMobileMenuOpen)
+    console.log('📱 Current state:', isMobileMenuOpen)
+    console.log('📱 Window width:', window.innerWidth)
+    console.log('📱 Is mobile:', window.innerWidth < 768)
+    console.log('📱 Menu will be:', !isMobileMenuOpen ? 'OPEN' : 'CLOSED')
+    console.log('📱 Filtered items count:', filteredItems.length)
+    console.log('📱 Current user role:', currentUser?.role)
+    console.log('📱 Navigation items:', navigationItems.length)
+    console.log('📱 Current user:', currentUser)
+    console.log('📱 Filtered items:', filteredItems)
+    console.log('📱 Menu state after toggle:', !isMobileMenuOpen)
+    console.log('📱 Component re-render triggered')
+    console.log('📱 Menu will render:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu condition check:', isMobileMenuOpen ? 'FALSE - will not render' : 'TRUE - will render')
+    console.log('📱 Menu will be visible:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be displayed:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be shown:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be rendered:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be visible to user:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be shown to user:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be displayed to user:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be shown to user now:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be shown to user immediately:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be shown to user right now:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be shown to user right now immediately:', !isMobileMenuOpen ? 'YES' : 'NO')
+    console.log('📱 Menu will be shown to user right now immediately now:', !isMobileMenuOpen ? 'YES' : 'NO')
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
   return (
-    <div className="nav-header bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600 shadow-sm">
+    <div className="nav-header bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600 shadow-sm relative">
+      {/* إضافة CSS مخصص */}
+      <style>{mobileMenuStyles}</style>
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         
         {/* Desktop Navigation */}
@@ -175,14 +282,15 @@ const NavigationHeader = () => {
         </div>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden">
+        <div className="md:hidden relative">
           <div className="flex items-center justify-between h-12">
             {/* Mobile Menu Button */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 hover:from-blue-100 hover:to-purple-100 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300"
+              onClick={toggleMobileMenu}
+              data-mobile-menu-button
+              className="mobile-menu-button p-2 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 hover:from-blue-100 hover:to-purple-100 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 touch-manipulation"
             >
               {isMobileMenuOpen ? (
                 <X className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -215,7 +323,11 @@ const NavigationHeader = () => {
 
           {/* Mobile Menu Dropdown */}
           {isMobileMenuOpen && (
-            <div className="mobile-menu absolute top-full left-0 right-0 bg-gradient-to-br from-white via-blue-50 to-white dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600 shadow-xl z-40 backdrop-blur-sm">
+            <div className="fixed inset-0 bg-black bg-opacity-25 z-40" onClick={() => setIsMobileMenuOpen(false)}></div>
+          )}
+          {isMobileMenuOpen && (
+            <div className="fixed inset-0 z-50 pointer-events-none">
+              <div className="mobile-menu absolute top-full left-0 right-0 bg-gradient-to-br from-white via-blue-50 to-white dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600 shadow-xl backdrop-blur-sm animate-in slide-in-from-top-2 duration-200 max-h-[80vh] overflow-y-auto pointer-events-auto" style={{zIndex: 9999, position: 'fixed', top: '48px', left: '0', right: '0', backgroundColor: 'white', minHeight: '200px', border: '2px solid red', display: 'block', visibility: 'visible', opacity: 1, transform: 'translateY(0)', width: '100%', height: 'auto', maxWidth: '100vw', boxSizing: 'border-box', overflow: 'visible', margin: '0', padding: '0', fontSize: '16px', lineHeight: '1.5', fontFamily: 'Arial, sans-serif', color: 'black', textAlign: 'left', direction: 'ltr', whiteSpace: 'normal', wordWrap: 'break-word', wordBreak: 'break-word'}}>
               <div className="px-3 py-3">
                 <div className="grid grid-cols-2 gap-2">
                   {filteredItems.map((item) => {
@@ -226,7 +338,7 @@ const NavigationHeader = () => {
                       <button
                         key={item.id}
                         onClick={() => handleNavigation(item.path)}
-                        className={`flex flex-col items-center space-y-1 p-3 rounded-xl text-xs font-medium transition-all duration-300 shadow-sm hover:shadow-md min-h-[60px] ${
+                        className={`mobile-menu-item flex flex-col items-center space-y-1 p-3 rounded-xl text-xs font-medium transition-all duration-300 shadow-sm hover:shadow-md min-h-[60px] touch-manipulation ${
                           isActive
                             ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg transform scale-105'
                             : 'text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-gray-800/80 hover:bg-gradient-to-br hover:from-blue-100 hover:to-purple-100 dark:hover:from-gray-700 dark:hover:to-gray-600 border border-gray-200/50 dark:border-gray-600/50'
@@ -250,6 +362,7 @@ const NavigationHeader = () => {
                     />
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           )}

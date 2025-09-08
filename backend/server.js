@@ -16,6 +16,7 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:3000",
+      "http://localhost:5002",
       "https://hr-api.in-general.net/api",
       "https://hr-dash.in-general.net",
     ],
@@ -94,9 +95,11 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     const allowedOrigins = [
       "http://localhost:3000",
+      "http://localhost:5002",
       "https://hr-api.in-general.net/api",
       "http://127.0.0.1:3000",
       "http://127.0.0.1:5001",
+      "http://127.0.0.1:5002",
       "https://hr-dash.in-general.net",
       undefined, // Allow requests with no origin
     ];
@@ -181,6 +184,8 @@ app.use("/api/categories", require("./routes/categories"));
 app.use("/api/settings", require("./routes/settings"));
 app.use("/api/whatsapp", require("./routes/whatsapp"));
 app.use("/api/transactions", require("./routes/transactions"));
+app.use("/api/treasury", require("./routes/treasury"));
+app.use("/api/system-logs", require("./routes/systemLogs"));
 app.use("/api/employees", require("./routes/employees"));
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/upload", require("./routes/upload"));

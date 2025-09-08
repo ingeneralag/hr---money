@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// إجبار استخدام المنفذ 5001 مباشرة بدلاً من الاعتماد على الـ proxy
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+// استخدام الـ URL المباشر للـ backend
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5001/api";
 
 // إنشاء instance للـ API
 const api = axios.create({

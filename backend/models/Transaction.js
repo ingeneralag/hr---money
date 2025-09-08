@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({
   transactionNumber: String,
-  type: { type: String, enum: ['income', 'expense'], required: true },
+  type: { type: String, enum: ['income', 'expense', 'debt'], required: true },
   amount: { type: Number, required: true },
   currency: String,
   description: String,
@@ -13,6 +13,20 @@ const transactionSchema = new mongoose.Schema({
   status: String,
   paymentMethod: String,
   paymentStatus: String,
+  // حقول خاصة بالمديونيات
+  debtStatus: { type: String, enum: ['pending', 'paid', 'partial'], default: 'pending' },
+  paidAmount: { type: Number, default: 0 },
+  remainingAmount: { type: Number },
+  totalFeesCollected: { type: Number, default: 0 }, // إجمالي الرسوم المحصلة (مكسب صافي)
+  paymentHistory: [{
+    amount: Number,
+    fees: { type: Number, default: 0 },
+    totalAmount: Number,
+    paymentDate: Date,
+    paymentMethod: String,
+    notes: String,
+    paidBy: String
+  }],
   reference: String,
   invoice: {
     number: String,
@@ -68,5 +82,34 @@ transactionSchema.index({ category: 1 });
 transactionSchema.index({ amount: 1 });
 transactionSchema.index({ createdAt: -1 });
 transactionSchema.index({ 'invoice.number': 1 });
+
+// Middleware لحساب المبلغ المتبقي للمديونيات
+transactionSchema.pre('save', function(next) {
+  if (this.type === 'debt') {
+    // حساب المبلغ المدفوع للمديونية فقط (بدون الرسوم)
+    const paidAmountForDebt = this.paymentHistory.reduce((total, payment) => {
+      return total + payment.amount; // فقط المبلغ الأساسي، بدون الرسوم
+    }, 0);
+    
+    // حساب إجمالي الرسوم المحصلة (مكسب صافي منفصل)
+    const totalFeesCollected = this.paymentHistory.reduce((total, payment) => {
+      return total + (payment.fees || 0);
+    }, 0);
+    
+    this.paidAmount = paidAmountForDebt; // المبلغ المدفوع للمديونية فقط
+    this.totalFeesCollected = totalFeesCollected; // إجمالي الرسوم المحصلة
+    this.remainingAmount = Math.max(0, this.amount - this.paidAmount);
+    
+    // تحديث حالة المديونية بناءً على المبلغ المدفوع للمديونية فقط
+    if (this.paidAmount >= this.amount) {
+      this.debtStatus = 'paid';
+    } else if (this.paidAmount > 0) {
+      this.debtStatus = 'partial';
+    } else {
+      this.debtStatus = 'pending';
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model('Transaction', transactionSchema); 
