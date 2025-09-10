@@ -605,6 +605,80 @@ export const transactionService = {
     const response = await api.delete(`/transactions/${id}`);
     return response.data;
   },
+
+  // تصدير المعاملات
+  export: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams();
+      Object.keys(filters).forEach(key => {
+        if (filters[key] && filters[key] !== 'all') {
+          params.append(key, filters[key]);
+        }
+      });
+
+      const response = await fetch(`${API_BASE_URL}/transactions/export?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `transactions-${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error exporting transactions:', error);
+      throw error;
+    }
+  },
+
+  // تقرير المعاملات
+  generateReport: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams();
+      Object.keys(filters).forEach(key => {
+        if (filters[key] && filters[key] !== 'all') {
+          params.append(key, filters[key]);
+        }
+      });
+
+      const response = await fetch(`${API_BASE_URL}/transactions/report?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `transactions-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error generating transactions report:', error);
+      throw error;
+    }
+  },
 };
 
 // خدمات الرواتب
@@ -792,19 +866,36 @@ export const clientService = {
 // خدمات السجلات
 export const logService = {
   getAll: async (filters = {}) => {
-    const response = await api.get("/logs", { params: filters });
-    return response.data;
+    try {
+      const params = new URLSearchParams();
+      Object.keys(filters).forEach((key) => {
+        if (filters[key] && filters[key] !== "all") {
+          params.append(key, filters[key]);
+        }
+      });
+
+      const response = await api.get(`/system-logs?${params}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching system logs:', error);
+      throw error;
+    }
   },
   getStats: async () => {
-    const response = await api.get("/logs/stats");
-    return response.data;
+    try {
+      const response = await api.get("/system-logs/stats");
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching system logs stats:', error);
+      throw error;
+    }
   },
   clear: async () => {
-    const response = await api.delete("/logs/clear");
+    const response = await api.delete("/system-logs/clear");
     return response.data;
   },
   export: async (format = "json") => {
-    const response = await api.get(`/logs/export?format=${format}`, {
+    const response = await api.get(`/system-logs/export?format=${format}`, {
       responseType: "blob",
     });
     return response.data;
@@ -1023,6 +1114,29 @@ export const salaryHelpers = {
   getCurrentMonth: () => {
     return new Date().toISOString().slice(0, 7);
   },
+};
+
+// Treasury Service
+export const treasuryService = {
+  getData: async () => {
+    try {
+      const response = await api.get('/treasury');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching treasury data:', error);
+      throw error.response?.data || error;
+    }
+  },
+
+  recalculate: async () => {
+    try {
+      const response = await api.post('/treasury/recalculate');
+      return response.data;
+    } catch (error) {
+      console.error('Error recalculating treasury:', error);
+      throw error.response?.data || error;
+    }
+  }
 };
 
 export default api;

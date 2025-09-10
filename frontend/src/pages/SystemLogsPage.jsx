@@ -3,31 +3,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '../components/ui/select';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '../components/ui/table';
 import { Badge } from '../components/ui/badge';
-import { 
-  Activity, 
-  Search, 
-  Filter, 
-  Download, 
-  RefreshCw, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Activity,
+  Search,
+  Filter,
+  Download,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
   Clock,
   User,
   Calendar,
@@ -35,6 +35,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { logService } from '../services/api';
 
 const SystemLogsPage = () => {
   const [logs, setLogs] = useState([]);
@@ -49,7 +50,7 @@ const SystemLogsPage = () => {
   const [actionStats, setActionStats] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 50,
+    limit: 10, // Changed default to 10
     total: 0,
     pages: 0
   });
@@ -68,29 +69,22 @@ const SystemLogsPage = () => {
   const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
-      const queryParams = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
+      const response = await logService.getAll({
+        page: pagination.page,
+        limit: pagination.limit,
         ...Object.fromEntries(
           Object.entries(filters).filter(([_, value]) => value !== '')
         )
       });
 
-      const response = await fetch(`http://localhost:5001/api/system-logs?${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
+      if (response.success) {
+        setLogs(response.data);
+        setStats(response.stats);
+        setActionStats(response.actionStats);
+        setPagination(response.pagination);
+      } else {
         throw new Error('فشل في جلب اللوجات');
       }
-
-      const data = await response.json();
-      setLogs(data.data);
-      setStats(data.stats);
-      setActionStats(data.actionStats);
-      setPagination(data.pagination);
     } catch (error) {
       toast.error('حدث خطأ في جلب اللوجات');
       console.error('Error fetching logs:', error);
@@ -102,18 +96,13 @@ const SystemLogsPage = () => {
   // دالة جلب الإحصائيات
   const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/system-logs/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      const response = await logService.getStats();
+      if (response.success) {
         // يمكن استخدام هذه البيانات لعرض رسوم بيانية
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
+      toast.error('حدث خطأ في جلب الإحصائيات');
     }
   }, []);
 
@@ -434,10 +423,11 @@ const SystemLogsPage = () => {
             <div className="flex items-center gap-2">
               <Label htmlFor="limit">عناصر في الصفحة:</Label>
               <Select value={pagination.limit.toString()} onValueChange={handleLimitChange}>
-                <SelectTrigger className="w-20">
+                <SelectTrigger className="w-20 text-gray-900">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="text-gray-900">
+                  <SelectItem value="10">10</SelectItem>
                   <SelectItem value="25">25</SelectItem>
                   <SelectItem value="50">50</SelectItem>
                   <SelectItem value="100">100</SelectItem>
@@ -500,15 +490,15 @@ const SystemLogsPage = () => {
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(log.status)}>
-                            {log.status === 'success' ? 'ناجح' : 
-                             log.status === 'failed' ? 'فاشل' : 'في الانتظار'}
+                            {log.status === 'success' ? 'ناجح' :
+                              log.status === 'failed' ? 'فاشل' : 'في الانتظار'}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge className={getSeverityColor(log.severity)}>
                             {log.severity === 'critical' ? 'حرج' :
-                             log.severity === 'high' ? 'عالي' :
-                             log.severity === 'medium' ? 'متوسط' : 'منخفض'}
+                              log.severity === 'high' ? 'عالي' :
+                                log.severity === 'medium' ? 'متوسط' : 'منخفض'}
                           </Badge>
                         </TableCell>
                         <TableCell>

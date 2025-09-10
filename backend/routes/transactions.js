@@ -19,11 +19,50 @@ const {
 router.get("/", async (req, res) => {
   try {
     try {
-      // Pagination and status filter
-      const { page = 1, limit = 10000, status } = req.query;
+      // Pagination, status, and date filters
+      const { page = 1, limit = 10000, status, startDate, endDate, type, category, search, client } = req.query;
       const query = {};
+
+      // Status filter
       if (status) {
         query.status = status;
+      }
+
+      // Date range filter
+      if (startDate || endDate) {
+        query.date = {};
+        if (startDate) {
+          query.date.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          query.date.$lte = new Date(endDate);
+        }
+      }
+
+      // Type filter
+      if (type) {
+        query.type = type;
+      }
+
+      // Category filter
+      if (category) {
+        query.category = category;
+      }
+
+      // Client filter
+      if (client && client !== 'none') {
+        query.clientId = client;
+      } else if (client === 'none') {
+        query.clientId = null;
+      }
+
+      // Search filter
+      if (search) {
+        query.$or = [
+          { description: { $regex: search, $options: 'i' } },
+          { reference: { $regex: search, $options: 'i' } },
+          { category: { $regex: search, $options: 'i' } }
+        ];
       }
 
       // First get total count of all documents
@@ -364,6 +403,351 @@ router.post("/:id/pay", requireAuth, logDebtPayment, async (req, res) => {
   } catch (error) {
     console.error("خطأ في تسجيل الدفع:", error);
     sendError(res, 500, "خطأ في تسجيل الدفع", "SERVER_ERROR", error.message);
+  }
+});
+
+// تصدير المعاملات
+router.get("/export", requireAuth, async (req, res) => {
+  try {
+    // استخدام نفس فلاتر البحث من الـ GET route
+    const { status, startDate, endDate, type, category, search, client } = req.query;
+    const query = {};
+
+    if (status) query.status = status;
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
+    }
+    if (type) query.type = type;
+    if (category) query.category = category;
+    if (client && client !== 'none') {
+      query.clientId = client;
+    } else if (client === 'none') {
+      query.clientId = null;
+    }
+    if (search) {
+      query.$or = [
+        { description: { $regex: search, $options: 'i' } },
+        { reference: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const transactions = await Transaction.find(query)
+      .sort({ date: -1 });
+
+    // تحويل البيانات إلى تنسيق Excel
+    const excel = require('exceljs');
+    const workbook = new excel.Workbook();
+    const worksheet = workbook.addWorksheet('المعاملات');
+
+    // تعريف الأعمدة
+    worksheet.columns = [
+      { header: 'التاريخ', key: 'date', width: 15 },
+      { header: 'الوصف', key: 'description', width: 30 },
+      { header: 'النوع', key: 'type', width: 15 },
+      { header: 'المبلغ', key: 'amount', width: 15 },
+      { header: 'التصنيف', key: 'category', width: 20 },
+      { header: 'الحالة', key: 'status', width: 15 },
+      { header: 'ملاحظات', key: 'notes', width: 30 }
+    ];
+
+    // إضافة البيانات
+    transactions.forEach(txn => {
+      worksheet.addRow({
+        date: new Date(txn.date).toLocaleDateString('ar-EG'),
+        description: txn.description,
+        type: txn.type === 'income' ? 'إيرادات' : txn.type === 'expense' ? 'مصروفات' : 'مديونيات',
+        amount: txn.amount,
+        category: txn.category,
+        status: txn.status === 'approved' ? 'معتمد' : txn.status === 'pending' ? 'قيد المراجعة' : 'مرفوض',
+        notes: txn.notes || ''
+      });
+    });
+
+    // تنسيق الملف
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // إرسال الملف
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=transactions-${new Date().toISOString().split('T')[0]}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error("خطأ في تصدير المعاملات:", error);
+    res.status(500).json({
+      success: false,
+      message: "خطأ في تصدير المعاملات",
+      error: error.message
+    });
+  }
+});
+
+// تقرير المعاملات
+router.get("/report", requireAuth, async (req, res) => {
+  try {
+    // استخدام نفس فلاتر البحث
+    const { status, startDate, endDate, type, category, search, client } = req.query;
+    const query = {};
+
+    if (status) query.status = status;
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
+    }
+    if (type) query.type = type;
+    if (category) query.category = category;
+    if (client && client !== 'none') {
+      query.clientId = client;
+    } else if (client === 'none') {
+      query.clientId = null;
+    }
+    if (search) {
+      query.$or = [
+        { description: { $regex: search, $options: 'i' } },
+        { reference: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const transactions = await Transaction.find(query)
+      .sort({ date: -1 });
+
+    // إنشاء PDF مع دعم اللغة العربية
+    const PDFDocument = require('pdfkit');
+    const path = require('path');
+
+    // تحميل الخط العربي
+    const CAIRO_FONT_PATH = path.join(__dirname, '..', 'fonts', 'Cairo-Regular.ttf');
+
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 50,
+      bufferPages: true,
+      autoFirstPage: true,
+      layout: 'portrait',
+      info: {
+        Title: 'تقرير المعاملات المالية',
+        Author: 'نظام إدارة المعاملات',
+        Subject: 'تقرير المعاملات',
+        Producer: 'PDFKit'
+      }
+    });
+
+    // تحميل الخط العربي
+    doc.registerFont('Cairo', CAIRO_FONT_PATH);
+    doc.font('Cairo');
+
+    // تنسيق العنوان
+    doc.fontSize(24);
+    doc.text('تقرير المعاملات المالية', 0, 50, {
+      align: 'center',
+      features: ['rtla']  // Enable RTL alignment
+    });
+    doc.moveDown(2);
+
+    // إضافة التاريخ والوقت
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const timeStr = now.toLocaleTimeString('ar-EG');
+
+    doc.fontSize(12);
+    doc.text(`تاريخ التقرير: ${dateStr}`, {
+      align: 'right',
+      features: ['rtla']
+    });
+    doc.text(`وقت الإنشاء: ${timeStr}`, {
+      align: 'right',
+      features: ['rtla']
+    });
+    doc.moveDown();
+
+    // إضافة الملخص
+    const summary = {
+      totalIncome: transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0),
+      totalExpense: transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0),
+      totalDebts: transactions.filter(t => t.type === 'debt').reduce((sum, t) => sum + t.amount, 0)
+    };
+
+    // عنوان قسم الملخص
+    doc.fontSize(16);
+    doc.text('ملخص المعاملات', { align: 'right', features: ['rtla'] });
+    doc.moveDown();
+
+    // رسم جدول الملخص
+    const summaryStartY = doc.y;
+    const summaryRowHeight = 30;
+
+    // رسم رأس الجدول
+    doc.rect(50, summaryStartY, 500, summaryRowHeight).stroke();
+    doc.fontSize(12);
+
+    // عناوين الأعمدة
+    doc.text('البيان', 400, summaryStartY + 8, { features: ['rtla'] });
+    doc.text('المبلغ', 150, summaryStartY + 8, { features: ['rtla'] });
+
+    // إضافة الصفوف
+    let summaryY = summaryStartY + summaryRowHeight;
+
+    // صف الإيرادات
+    doc.rect(50, summaryY, 500, summaryRowHeight).stroke();
+    doc.text('إجمالي الإيرادات', 400, summaryY + 8, { features: ['rtla'] });
+    doc.text(`${summary.totalIncome.toLocaleString('ar-EG')} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
+
+    // صف المصروفات
+    summaryY += summaryRowHeight;
+    doc.rect(50, summaryY, 500, summaryRowHeight).stroke();
+    doc.text('إجمالي المصروفات', 400, summaryY + 8, { features: ['rtla'] });
+    doc.text(`${summary.totalExpense.toLocaleString('ar-EG')} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
+
+    // صف المديونيات
+    summaryY += summaryRowHeight;
+    doc.rect(50, summaryY, 500, summaryRowHeight).stroke();
+    doc.text('إجمالي المديونيات', 400, summaryY + 8, { features: ['rtla'] });
+    doc.text(`${summary.totalDebts.toLocaleString('ar-EG')} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
+
+    // صف صافي الرصيد
+    summaryY += summaryRowHeight;
+    doc.rect(50, summaryY, 500, summaryRowHeight).stroke();
+    doc.text('صافي الرصيد', 400, summaryY + 8, { features: ['rtla'] });
+    doc.text(`${(summary.totalIncome - summary.totalExpense).toLocaleString('ar-EG')} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
+
+    // إضافة مسافة بعد جدول الملخص
+    doc.y = summaryY + summaryRowHeight + 40; // 40 pixels extra space
+    doc.moveDown(2);
+
+    // عنوان الجدول
+    doc.fontSize(16);
+    doc.text('تفاصيل المعاملات', { align: 'right', features: ['rtla'] });
+    doc.moveDown();
+
+    // رسم الجدول
+    const startY = doc.y;
+    const rowHeight = 100;
+    const colWidths = {
+      date: 100,
+      desc: 120,
+      type: 80,
+      amount: 100,
+      category: 100
+    };
+
+    // رسم رأس الجدول
+    doc.rect(50, startY, 500, 30).stroke();
+    doc.fontSize(10);
+    let currentX = 50;
+
+    // عناوين الأعمدة
+    doc.text('التاريخ', currentX + 10, startY + 10, { features: ['rtla'] });
+    currentX += colWidths.date;
+
+    doc.text('الوصف', currentX + 10, startY + 10, { features: ['rtla'] });
+    currentX += colWidths.desc;
+
+    doc.text('النوع', currentX + 10, startY + 10, { features: ['rtla'] });
+    currentX += colWidths.type;
+
+    doc.text('المبلغ', currentX + 10, startY + 10, { features: ['rtla'] });
+    currentX += colWidths.amount;
+
+    doc.text('التصنيف', currentX + 10, startY + 10, { features: ['rtla'] });
+
+    // إضافة البيانات
+    let currentY = startY + 30;
+
+    transactions.forEach((txn, index) => {
+      // رسم إطار الصف
+      doc.rect(50, currentY, 500, rowHeight).stroke();
+
+      currentX = 50;
+      doc.fontSize(10);
+
+      // التاريخ
+      doc.text(
+        new Date(txn.date).toLocaleDateString('ar-EG'),
+        currentX + 10,
+        currentY + 10,
+        { features: ['rtla'] }
+      );
+      currentX += colWidths.date;
+
+      // الوصف
+      doc.text(
+        txn.description,
+        currentX + 10,
+        currentY + 10,
+        { features: ['rtla'] }
+      );
+      currentX += colWidths.desc;
+
+      // النوع
+      const typeText = txn.type === 'income' ? 'إيرادات' :
+        txn.type === 'expense' ? 'مصروفات' : 'مديونيات';
+      doc.text(
+        typeText,
+        currentX + 10,
+        currentY + 10,
+        { features: ['rtla'] }
+      );
+      currentX += colWidths.type;
+
+      // المبلغ
+      doc.text(
+        `${txn.amount.toLocaleString('ar-EG')} جنيه`,
+        currentX + 10,
+        currentY + 10,
+        { features: ['rtla'] }
+      );
+      currentX += colWidths.amount;
+
+      // التصنيف
+      doc.text(
+        txn.category,
+        currentX + 10,
+        currentY + 10,
+        { features: ['rtla'] }
+      );
+
+      // الحالة
+      const statusText = txn.status === 'approved' ? 'معتمد' :
+        txn.status === 'pending' ? 'قيد المراجعة' : 'مرفوض';
+      doc.text(
+        statusText,
+        currentX + 10,
+        currentY + 30,
+        { features: ['rtla'] }
+      );
+
+      currentY += rowHeight;
+
+      // إضافة صفحة جديدة إذا لزم الأمر
+      if (currentY > 700 && index < transactions.length - 1) {
+        doc.addPage();
+        currentY = 50;
+      }
+    });
+
+    // إرسال الملف
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=transactions-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.pipe(res);
+    doc.end();
+
+  } catch (error) {
+    console.error("خطأ في إنشاء تقرير المعاملات:", error);
+    res.status(500).json({
+      success: false,
+      message: "خطأ في إنشاء تقرير المعاملات",
+      error: error.message
+    });
   }
 });
 

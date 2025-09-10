@@ -46,7 +46,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '../utils/formatters'
-import { transactionService, clientService, categoryService } from '../services/api'
+import { transactionService, clientService, categoryService, treasuryService } from '../services/api'
 import { toast } from 'react-hot-toast'
 
 const TransactionsPage = () => {
@@ -67,6 +67,11 @@ const TransactionsPage = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [showDateFilter, setShowDateFilter] = useState(false)
+  const [dateFilter, setDateFilter] = useState({
+    startDate: '',
+    endDate: ''
+  })
   const [paymentData, setPaymentData] = useState({
     amount: '',
     paymentMethod: 'كاش',
@@ -102,20 +107,13 @@ const TransactionsPage = () => {
   // دالة جلب بيانات الخزنة
   const fetchTreasuryData = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/treasury', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setTreasuryData(data.data);
-        }
+      const response = await treasuryService.getData();
+      if (response.success) {
+        setTreasuryData(response.data);
       }
     } catch (error) {
       console.error('خطأ في جلب بيانات الخزنة:', error);
+      toast.error('حدث خطأ في جلب بيانات الخزنة');
     }
   }, []);
 
@@ -169,32 +167,40 @@ const TransactionsPage = () => {
         category: selectedCategory,
         search: searchTerm,
         page: currentPage,
-        limit: itemsPerPage
+        limit: itemsPerPage,
+        client: selectedClient !== 'none' ? selectedClient : undefined,
+        startDate: dateFilter.startDate || undefined,
+        endDate: dateFilter.endDate || undefined
       })
-      setTransactions(response.data)
-      setTotalPages(response.pagination.pages)
-      setStats({
-        totalIncome: response.summary.totalIncome,
-        totalExpenses: response.summary.totalExpense,
-        totalDebts: response.summary.totalDebts || 0,
-        paidDebts: response.summary.paidDebts || 0,
-        remainingDebts: response.summary.remainingDebts || 0,
-        totalFeesCollected: response.summary.totalFeesCollected || 0, // الرسوم المحصلة
-        pendingTransactions: response.data.filter(t => t.status === 'pending').length,
-        thisMonthTransactions: response.data.filter(t => {
-          const transactionDate = new Date(t.date)
-          const currentDate = new Date()
-          return transactionDate.getMonth() === currentDate.getMonth() &&
-            transactionDate.getFullYear() === currentDate.getFullYear()
-        }).length
-      })
+
+      if (response.success) {
+        setTransactions(response.data)
+        setTotalPages(response.pagination.pages)
+        setStats({
+          totalIncome: response.summary.totalIncome || 0,
+          totalExpenses: response.summary.totalExpense || 0,
+          totalDebts: response.summary.totalDebts || 0,
+          paidDebts: response.summary.paidDebts || 0,
+          remainingDebts: response.summary.remainingDebts || 0,
+          totalFeesCollected: response.summary.totalFeesCollected || 0,
+          pendingTransactions: response.data.filter(t => t.status === 'pending').length,
+          thisMonthTransactions: response.data.filter(t => {
+            const transactionDate = new Date(t.date)
+            const currentDate = new Date()
+            return transactionDate.getMonth() === currentDate.getMonth() &&
+              transactionDate.getFullYear() === currentDate.getFullYear()
+          }).length
+        })
+      } else {
+        toast.error('حدث خطأ في جلب المعاملات')
+      }
     } catch (error) {
       toast.error('حدث خطأ في جلب المعاملات')
       console.error('Error fetching transactions:', error)
     } finally {
       setLoading(false)
     }
-  }, [selectedType, selectedCategory, searchTerm])
+  }, [selectedType, selectedCategory, searchTerm, currentPage, itemsPerPage, selectedClient, dateFilter])
 
   useEffect(() => {
     fetchTransactions()
@@ -692,11 +698,49 @@ const TransactionsPage = () => {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={async () => {
+                try {
+                  const currentFilters = {
+                    type: selectedType,
+                    category: selectedCategory,
+                    search: searchTerm,
+                    client: selectedClient !== 'none' ? selectedClient : undefined,
+                    startDate: dateFilter.startDate || undefined,
+                    endDate: dateFilter.endDate || undefined
+                  };
+                  await transactionService.export(currentFilters);
+                  toast.success('تم تصدير المعاملات بنجاح');
+                } catch (error) {
+                  toast.error('حدث خطأ أثناء تصدير المعاملات');
+                }
+              }}
+            >
               <Download className="w-4 h-4" />
               تصدير
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={async () => {
+                try {
+                  const currentFilters = {
+                    type: selectedType,
+                    category: selectedCategory,
+                    search: searchTerm,
+                    client: selectedClient !== 'none' ? selectedClient : undefined,
+                    startDate: dateFilter.startDate || undefined,
+                    endDate: dateFilter.endDate || undefined
+                  };
+                  await transactionService.generateReport(currentFilters);
+                  toast.success('تم إنشاء التقرير بنجاح');
+                } catch (error) {
+                  toast.error('حدث خطأ أثناء إنشاء التقرير');
+                }
+              }}
+            >
               <Filter className="w-4 h-4" />
               تقرير
             </Button>
@@ -725,19 +769,10 @@ const TransactionsPage = () => {
             size="sm"
             onClick={async () => {
               try {
-                const response = await fetch('http://localhost:5001/api/treasury/recalculate', {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                  }
-                });
-
-                if (response.ok) {
-                  const data = await response.json();
-                  if (data.success) {
-                    toast.success('تم إعادة حساب الخزنة بنجاح');
-                    await fetchTreasuryData();
-                  }
+                const response = await treasuryService.recalculate();
+                if (response.success) {
+                  toast.success('تم إعادة حساب الخزنة بنجاح');
+                  await fetchTreasuryData();
                 }
               } catch (error) {
                 toast.error('خطأ في إعادة حساب الخزنة');
@@ -982,9 +1017,13 @@ const TransactionsPage = () => {
                 <option disabled>لا توجد عملاء</option>
               )}
             </select>
-            <Button variant="outline" className="gap-2">
+            <Button
+              variant="outline"
+              className={`gap-2 ${dateFilter.startDate || dateFilter.endDate ? 'bg-blue-50 text-blue-600 border-blue-200' : ''}`}
+              onClick={() => setShowDateFilter(true)}
+            >
               <Calendar className="w-4 h-4" />
-              تاريخ محدد
+              {dateFilter.startDate || dateFilter.endDate ? 'تصفية حسب التاريخ' : 'تاريخ محدد'}
             </Button>
           </div>
         </CardContent>
@@ -1698,6 +1737,65 @@ const TransactionsPage = () => {
           <div className="text-sm text-gray-600 dark:text-gray-400">
             إجمالي النتائج: {transactions.length}
           </div>
+        </div>
+      )}
+
+      {/* نموذج تصفية التاريخ */}
+      {showDateFilter && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>تصفية حسب التاريخ</CardTitle>
+              <CardDescription>حدد نطاق التاريخ للتصفية</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">من تاريخ</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={dateFilter.startDate}
+                  onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">إلى تاريخ</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={dateFilter.endDate}
+                  onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
+                />
+              </div>
+            </CardContent>
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDateFilter({ startDate: '', endDate: '' });
+                  setShowDateFilter(false);
+                  fetchTransactions();
+                }}
+              >
+                إعادة تعيين
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowDateFilter(false);
+                  fetchTransactions();
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                تطبيق التصفية
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowDateFilter(false)}
+              >
+                إغلاق
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
     </div>
