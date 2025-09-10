@@ -1285,7 +1285,7 @@ const TransactionsPage = () => {
       {/* Modal سداد المديونية */}
       {showPayModal && selectedDebt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl">
+          <Card className="w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl max-h-[90vh] flex flex-col">
             <CardHeader className="text-center border-b border-gray-200 dark:border-gray-700">
               <CardTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
                 <CheckCircle className="w-6 h-6 text-green-600" />
@@ -1296,7 +1296,7 @@ const TransactionsPage = () => {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-6 space-y-4 overflow-y-auto flex-1">
               {/* معلومات المديونية */}
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
