@@ -278,13 +278,7 @@ const TransactionsPage = () => {
 
   const handleViewPaymentHistory = async (transaction) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/transactions/${transaction._id}/debt-details`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      const data = await response.json();
+      const data = await transactionService.getDebtDetails(transaction._id);
 
       if (data.success) {
         setSelectedPaymentHistory(data.data);
@@ -318,22 +312,13 @@ const TransactionsPage = () => {
     setPaymentLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:5001/api/transactions/${selectedDebt._id}/pay`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          amount: paymentAmount,
-          fees: fees,
-          totalAmount: totalAmount,
-          paymentMethod: paymentData.paymentMethod,
-          notes: paymentData.notes
-        })
+      const data = await transactionService.payDebt(selectedDebt._id, {
+        amount: paymentAmount,
+        fees: fees,
+        totalAmount: totalAmount,
+        paymentMethod: paymentData.paymentMethod,
+        notes: paymentData.notes
       });
-
-      const data = await response.json();
 
       if (data.success) {
         toast.success('تم تسجيل الدفع بنجاح');

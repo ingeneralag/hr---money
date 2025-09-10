@@ -68,7 +68,7 @@ import dailyAttendanceService from "../services/dailyAttendanceService";
 import { formatCurrency, formatDate } from "../utils/formatters";
 
 // إعداد الـ URL الأساسي للخادم الخلفي
-const BACKEND_BASE_URL = "http://localhost:5001";
+const BACKEND_BASE_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || "http://localhost:5001";
 
 const MePage = ({ user, activeSection = "overview" }) => {
   const navigate = useNavigate();
@@ -243,7 +243,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
   useEffect(() => {
     if (!user?.id) return;
 
-    const newSocket = io("http://localhost:5001");
+    const newSocket = io(BACKEND_BASE_URL);
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
@@ -395,8 +395,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
           if (dateMatch) {
             screenshotDate = new Date(dateMatch[1]);
             console.log(
-              `📅 تاريخ الصورة ${screenshot}: ${
-                dateMatch[1]
+              `📅 تاريخ الصورة ${screenshot}: ${dateMatch[1]
               } -> ${screenshotDate.toDateString()}`
             );
           } else {
@@ -405,8 +404,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
             if (timestampMatch) {
               screenshotDate = new Date(parseInt(timestampMatch[1]));
               console.log(
-                `🕐 timestamp الصورة ${screenshot}: ${
-                  timestampMatch[1]
+                `🕐 timestamp الصورة ${screenshot}: ${timestampMatch[1]
                 } -> ${screenshotDate.toDateString()}`
               );
             } else {
@@ -626,7 +624,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
       const token = localStorage.getItem("token");
       const response = await fetch(
         process.env.REACT_APP_API_URL +
-          `/employees/desktop-tracking/${user.id}`,
+        `/employees/desktop-tracking/${user.id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -836,7 +834,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
       const token = localStorage.getItem("token");
       const response = await fetch(
         process.env.REACT_APP_API_URL +
-          `/daily-attendance/sync-today/${user.id}`,
+        `/daily-attendance/sync-today/${user.id}`,
         {
           method: "POST",
           headers: {
@@ -1313,15 +1311,14 @@ const MePage = ({ user, activeSection = "overview" }) => {
   const showNotification = (message, type = "info") => {
     // إنشاء عنصر الإشعار
     const notification = document.createElement("div");
-    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full ${
-      type === "success"
-        ? "bg-green-500 text-white"
-        : type === "error"
+    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full ${type === "success"
+      ? "bg-green-500 text-white"
+      : type === "error"
         ? "bg-red-500 text-white"
         : type === "warning"
-        ? "bg-yellow-500 text-black"
-        : "bg-blue-500 text-white"
-    }`;
+          ? "bg-yellow-500 text-black"
+          : "bg-blue-500 text-white"
+      }`;
     notification.innerHTML = `
       <div class="flex items-center space-x-2">
         <span>${message}</span>
@@ -1683,7 +1680,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
       // إضافة معامل الشهر للحصول على بيانات الشهر المحدد فقط
       const response = await fetch(
         process.env.REACT_APP_API_URL +
-          `/daily-attendance/user-records/${user.id}?month=${selectedMonth}`,
+        `/daily-attendance/user-records/${user.id}?month=${selectedMonth}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1756,8 +1753,8 @@ const MePage = ({ user, activeSection = "overview" }) => {
                 status === "متأخر" && totalHours > 0 && totalHours < 8
                   ? 8 - totalHours
                   : status === "غائب" && !record.isWeekend
-                  ? 8
-                  : 0,
+                    ? 8
+                    : 0,
               deductionAmount: record.deductionAmount || 0,
               status: status,
               isToday: isToday,
@@ -1786,7 +1783,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
       const token = localStorage.getItem("token");
       const response = await fetch(
         process.env.REACT_APP_API_URL +
-          `/employees/${user.id}/bonuses/${selectedMonth}`,
+        `/employees/${user.id}/bonuses/${selectedMonth}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1814,7 +1811,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
       const token = localStorage.getItem("token");
       const response = await fetch(
         process.env.REACT_APP_API_URL +
-          `/employees/${user.id}/deductions/${selectedMonth}`,
+        `/employees/${user.id}/deductions/${selectedMonth}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -2067,7 +2064,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
       console.log("🔄 جاري جلب السجلات اليومية للمستخدم:", user.id);
       const response = await fetch(
         process.env.REACT_APP_API_URL +
-          `/daily-attendance/user-records/${user.id}`,
+        `/daily-attendance/user-records/${user.id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -2292,17 +2289,17 @@ const MePage = ({ user, activeSection = "overview" }) => {
       basic: salaryData?.baseSalary || 12000,
       allowances: salaryData?.allowances
         ? Object.values(salaryData.allowances).reduce(
-            (sum, val) => sum + val,
-            0
-          )
+          (sum, val) => sum + val,
+          0
+        )
         : 3000,
       housing: salaryData?.allowances?.housing || 2000,
       transportation: salaryData?.allowances?.transportation || 1200,
       deductions: salaryData?.deductions
         ? Object.values(salaryData.deductions).reduce(
-            (sum, val) => sum + val,
-            0
-          )
+          (sum, val) => sum + val,
+          0
+        )
         : 1500,
       insurance: salaryData?.deductions?.insurance || 650,
       tax: salaryData?.deductions?.tax || 850,
@@ -2319,10 +2316,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
       completed: performanceData?.achievements?.length || 0,
       attendance: attendanceData?.thisMonth?.present
         ? Math.round(
-            (attendanceData.thisMonth.present /
-              attendanceData.thisMonth.workDays) *
-              100
-          )
+          (attendanceData.thisMonth.present /
+            attendanceData.thisMonth.workDays) *
+          100
+        )
         : 0,
       goals: performanceData?.goals?.length || 0,
       achievedGoals: performanceData?.achievements?.length || 0,
@@ -2671,22 +2668,20 @@ const MePage = ({ user, activeSection = "overview" }) => {
                 {employeeData.notifications.slice(0, 4).map((notification) => (
                   <div
                     key={notification.id}
-                    className={`flex items-start space-x-3 rtl:space-x-reverse p-3 rounded-lg ${
-                      notification.type === "success"
-                        ? "bg-green-50 dark:bg-green-900/20"
-                        : notification.type === "warning"
+                    className={`flex items-start space-x-3 rtl:space-x-reverse p-3 rounded-lg ${notification.type === "success"
+                      ? "bg-green-50 dark:bg-green-900/20"
+                      : notification.type === "warning"
                         ? "bg-yellow-50 dark:bg-yellow-900/20"
                         : "bg-blue-50 dark:bg-blue-900/20"
-                    }`}
+                      }`}
                   >
                     <div
-                      className={`w-2 h-2 rounded-full mt-2 ${
-                        notification.type === "success"
-                          ? "bg-green-500 dark:bg-green-400"
-                          : notification.type === "warning"
+                      className={`w-2 h-2 rounded-full mt-2 ${notification.type === "success"
+                        ? "bg-green-500 dark:bg-green-400"
+                        : notification.type === "warning"
                           ? "bg-yellow-500 dark:bg-yellow-400"
                           : "bg-blue-500 dark:bg-blue-400"
-                      }`}
+                        }`}
                     />
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900 dark:text-white">
@@ -3121,7 +3116,7 @@ const MePage = ({ user, activeSection = "overview" }) => {
                         const token = localStorage.getItem("token");
                         const response = await fetch(
                           process.env.REACT_APP_API_URL +
-                            "/daily-attendance/auto-update-daily",
+                          "/daily-attendance/auto-update-daily",
                           {
                             method: "POST",
                             headers: {
@@ -3247,11 +3242,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
                     الحالة:
                   </span>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      desktopAppConnected
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                    }`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${desktopAppConnected
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                      }`}
                   >
                     {desktopAppConnected ? "متصل" : "غير متصل"}
                   </span>
@@ -3273,13 +3267,11 @@ const MePage = ({ user, activeSection = "overview" }) => {
                   </span>
                 </div>
                 <Button
-                  className={`w-full mt-3 ${
-                    realTodayData.isWorking
-                      ? "bg-red-600 hover:bg-red-700"
-                      : "bg-green-600 hover:bg-green-700"
-                  } ${
-                    !desktopAppConnected ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  className={`w-full mt-3 ${realTodayData.isWorking
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-green-600 hover:bg-green-700"
+                    } ${!desktopAppConnected ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   onClick={() =>
                     handleAttendanceAction(
                       realTodayData.isWorking ? "الانصراف" : "الحضور"
@@ -3357,11 +3349,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
                   <div className="grid grid-cols-2 gap-2">
                     {/* زر الإيقاف المؤقت/الاستكمال */}
                     <Button
-                      className={`${
-                        isPaused
-                          ? "bg-green-600 hover:bg-green-700"
-                          : "bg-yellow-600 hover:bg-yellow-700"
-                      } text-white`}
+                      className={`${isPaused
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-yellow-600 hover:bg-yellow-700"
+                        } text-white`}
                       onClick={handleRemotePauseWork}
                       disabled={
                         remoteControlLoading ||
@@ -3379,11 +3370,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
 
                     {/* زر الاستراحة/إنهاء الاستراحة */}
                     <Button
-                      className={`${
-                        isOnBreak
-                          ? "bg-green-600 hover:bg-green-700"
-                          : "bg-blue-600 hover:bg-blue-700"
-                      } text-white`}
+                      className={`${isOnBreak
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-blue-600 hover:bg-blue-700"
+                        } text-white`}
                       onClick={handleRemoteBreak}
                       disabled={
                         remoteControlLoading || workStatus === "stopped"
@@ -3404,12 +3394,12 @@ const MePage = ({ user, activeSection = "overview" }) => {
                   {workStatus === "stopped"
                     ? "يمكنك بدء العمل الآن"
                     : workStatus === "working"
-                    ? "العمل جاري - يمكنك الإيقاف المؤقت أو الاستراحة"
-                    : workStatus === "paused"
-                    ? "العمل متوقف مؤقتاً - يمكنك الاستكمال أو الإنهاء"
-                    : workStatus === "break"
-                    ? "في استراحة - يمكنك إنهاء الاستراحة أو العمل"
-                    : "يمكنك التحكم في التطبيق من هنا"}
+                      ? "العمل جاري - يمكنك الإيقاف المؤقت أو الاستراحة"
+                      : workStatus === "paused"
+                        ? "العمل متوقف مؤقتاً - يمكنك الاستكمال أو الإنهاء"
+                        : workStatus === "break"
+                          ? "في استراحة - يمكنك إنهاء الاستراحة أو العمل"
+                          : "يمكنك التحكم في التطبيق من هنا"}
                 </div>
               </div>
             </CardContent>
@@ -3431,8 +3421,8 @@ const MePage = ({ user, activeSection = "overview" }) => {
                   <span className="font-medium text-green-800 dark:text-green-200">
                     {realTodayData.activeSeconds
                       ? formatHoursToHoursMinutes(
-                          realTodayData.activeSeconds / 3600
-                        )
+                        realTodayData.activeSeconds / 3600
+                      )
                       : "0 ساعة 0 دقيقة"}
                   </span>
                 </div>
@@ -3443,8 +3433,8 @@ const MePage = ({ user, activeSection = "overview" }) => {
                   <span className="font-medium text-orange-600 dark:text-orange-400">
                     {realTodayData.idleSeconds
                       ? formatHoursToHoursMinutes(
-                          realTodayData.idleSeconds / 3600
-                        )
+                        realTodayData.idleSeconds / 3600
+                      )
                       : "0 ساعة 0 دقيقة"}
                   </span>
                 </div>
@@ -3510,30 +3500,28 @@ const MePage = ({ user, activeSection = "overview" }) => {
                     نسبة الإنتاجية:
                   </span>
                   <span
-                    className={`px-2 py-1 rounded text-xs font-medium ${
-                      realTodayData.productivity >= 80
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                        : realTodayData.productivity >= 60
+                    className={`px-2 py-1 rounded text-xs font-medium ${realTodayData.productivity >= 80
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                      : realTodayData.productivity >= 60
                         ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                         : realTodayData.productivity > 0
-                        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                        : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300"
-                    }`}
+                          ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300"
+                      }`}
                   >
                     {realTodayData.productivity}%
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-3">
                   <div
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      realTodayData.productivity >= 80
-                        ? "bg-green-600"
-                        : realTodayData.productivity >= 60
+                    className={`h-2 rounded-full transition-all duration-300 ${realTodayData.productivity >= 80
+                      ? "bg-green-600"
+                      : realTodayData.productivity >= 60
                         ? "bg-yellow-600"
                         : realTodayData.productivity > 0
-                        ? "bg-red-600"
-                        : "bg-gray-400"
-                    }`}
+                          ? "bg-red-600"
+                          : "bg-gray-400"
+                      }`}
                     style={{
                       width: `${Math.min(realTodayData.productivity, 100)}%`,
                     }}
@@ -3543,8 +3531,8 @@ const MePage = ({ user, activeSection = "overview" }) => {
                   آخر نشاط:{" "}
                   {realTodayData.lastActivity
                     ? new Date(realTodayData.lastActivity).toLocaleTimeString(
-                        "ar-EG"
-                      )
+                      "ar-EG"
+                    )
                     : "لا يوجد نشاط اليوم"}
                 </div>
               </div>
@@ -3581,14 +3569,14 @@ const MePage = ({ user, activeSection = "overview" }) => {
                     آخر صورة:
                   </span>
                   {realTodayData.screenshots &&
-                  realTodayData.screenshots.length > 0 ? (
+                    realTodayData.screenshots.length > 0 ? (
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => {
                         const lastScreenshot =
                           realTodayData.screenshots[
-                            realTodayData.screenshots.length - 1
+                          realTodayData.screenshots.length - 1
                           ];
                         setSelectedScreenshot({
                           url: `${BACKEND_BASE_URL}/uploads/screenshots/${lastScreenshot}`,
@@ -3607,11 +3595,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
                 </div>
                 <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all duration-1000 ${
-                      isAppConnected
-                        ? "bg-green-500 animate-pulse"
-                        : "bg-gray-400"
-                    }`}
+                    className={`h-full transition-all duration-1000 ${isAppConnected
+                      ? "bg-green-500 animate-pulse"
+                      : "bg-gray-400"
+                      }`}
                     style={{ width: "100%" }}
                   ></div>
                 </div>
@@ -3713,11 +3700,11 @@ const MePage = ({ user, activeSection = "overview" }) => {
                 <div className="font-semibold text-green-800 dark:text-green-200">
                   {desktopTrackingData?.data?.weeklyStats
                     ? Math.round(
-                        desktopTrackingData.data.weeklyStats.reduce(
-                          (sum, day) => sum + (day.productivity || 0),
-                          0
-                        ) / desktopTrackingData.data.weeklyStats.length
-                      )
+                      desktopTrackingData.data.weeklyStats.reduce(
+                        (sum, day) => sum + (day.productivity || 0),
+                        0
+                      ) / desktopTrackingData.data.weeklyStats.length
+                    )
                     : 0}
                   %
                 </div>
@@ -3729,11 +3716,11 @@ const MePage = ({ user, activeSection = "overview" }) => {
                 <div className="font-semibold text-blue-800 dark:text-blue-200">
                   {desktopTrackingData?.data?.weeklyStats
                     ? Math.round(
-                        desktopTrackingData.data.weeklyStats.reduce(
-                          (sum, day) => sum + (day.workTime || 0),
-                          0
-                        ) / 3600
-                      )
+                      desktopTrackingData.data.weeklyStats.reduce(
+                        (sum, day) => sum + (day.workTime || 0),
+                        0
+                      ) / 3600
+                    )
                     : 0}{" "}
                   ساعة
                 </div>
@@ -3745,11 +3732,11 @@ const MePage = ({ user, activeSection = "overview" }) => {
                 <div className="font-semibold text-yellow-800 dark:text-yellow-200">
                   {desktopTrackingData?.data?.weeklyStats
                     ? Math.round(
-                        desktopTrackingData.data.weeklyStats.reduce(
-                          (sum, day) => sum + (day.activeTime || 0),
-                          0
-                        ) / 3600
-                      )
+                      desktopTrackingData.data.weeklyStats.reduce(
+                        (sum, day) => sum + (day.activeTime || 0),
+                        0
+                      ) / 3600
+                    )
                     : 0}{" "}
                   ساعة
                 </div>
@@ -3761,8 +3748,8 @@ const MePage = ({ user, activeSection = "overview" }) => {
                 <div className="font-semibold text-purple-800 dark:text-purple-200">
                   {desktopTrackingData?.data?.weeklyStats
                     ? desktopTrackingData.data.weeklyStats.filter(
-                        (day) => day.workTime > 0
-                      ).length
+                      (day) => day.workTime > 0
+                    ).length
                     : 0}
                 </div>
                 <div className="text-purple-600 dark:text-purple-400 text-xs">
@@ -3796,8 +3783,8 @@ const MePage = ({ user, activeSection = "overview" }) => {
                       f !== "" &&
                       JSON.stringify(f) !== '{"start":"","end":""}'
                   ) && (
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                  )}
+                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    )}
                 </Button>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   🔒 للمشاهدة فقط - لا يمكن المسح
@@ -4098,11 +4085,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
                                 }
                                 size="sm"
                                 onClick={() => setCurrentPage(pageNum)}
-                                className={`w-8 h-8 p-0 ${
-                                  currentPage === pageNum
-                                    ? "bg-blue-600 text-white"
-                                    : "hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                }`}
+                                className={`w-8 h-8 p-0 ${currentPage === pageNum
+                                  ? "bg-blue-600 text-white"
+                                  : "hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                  }`}
                               >
                                 {pageNum}
                               </Button>
@@ -4230,17 +4216,15 @@ const MePage = ({ user, activeSection = "overview" }) => {
                     <tr
                       key={index}
                       className={`
-                    ${
-                      record.isToday
-                        ? "bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-l-yellow-500"
-                        : ""
-                    }
+                    ${record.isToday
+                          ? "bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-l-yellow-500"
+                          : ""
+                        }
                     ${record.isWeekend ? "bg-gray-50 dark:bg-gray-800/50" : ""}
-                    ${
-                      record.hasRealData
-                        ? "bg-green-50 dark:bg-green-900/10"
-                        : ""
-                    }
+                    ${record.hasRealData
+                          ? "bg-green-50 dark:bg-green-900/10"
+                          : ""
+                        }
                     hover:bg-gray-100 dark:hover:bg-gray-700/50
                   `}
                     >
@@ -4420,13 +4404,12 @@ const MePage = ({ user, activeSection = "overview" }) => {
                             <div className="flex items-center justify-center">
                               <div className="w-12 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div
-                                  className={`h-full transition-all duration-300 ${
-                                    productivity >= 80
-                                      ? "bg-green-500"
-                                      : productivity >= 60
+                                  className={`h-full transition-all duration-300 ${productivity >= 80
+                                    ? "bg-green-500"
+                                    : productivity >= 60
                                       ? "bg-yellow-500"
                                       : "bg-red-500"
-                                  }`}
+                                    }`}
                                   style={{ width: `${productivity}%` }}
                                 ></div>
                               </div>
@@ -4441,19 +4424,18 @@ const MePage = ({ user, activeSection = "overview" }) => {
                       </td>
                       <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-center">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            record.status === "حاضر"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                              : record.status === "متأخر"
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${record.status === "حاضر"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                            : record.status === "متأخر"
                               ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                               : record.status === "غائب"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                              : record.status === "عطلة أسبوعية"
-                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                              : record.status?.includes("إجازة رسمية")
-                              ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
-                              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                          }`}
+                                ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                : record.status === "عطلة أسبوعية"
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                                  : record.status?.includes("إجازة رسمية")
+                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                                    : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                            }`}
                         >
                           {record.status}
                         </span>
@@ -4561,11 +4543,11 @@ const MePage = ({ user, activeSection = "overview" }) => {
                     generateDailyRecords()
                       .filter((r) => r.productivity > 0)
                       .reduce((sum, r) => sum + r.productivity, 0) /
-                      Math.max(
-                        1,
-                        generateDailyRecords().filter((r) => r.productivity > 0)
-                          .length
-                      )
+                    Math.max(
+                      1,
+                      generateDailyRecords().filter((r) => r.productivity > 0)
+                        .length
+                    )
                   )}
                   %
                 </div>
@@ -4845,200 +4827,199 @@ const MePage = ({ user, activeSection = "overview" }) => {
         {/* معرض الصور */}
         {(todayData.screenshots.length > 0 ||
           filteredScreenshots.length > 0) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                  <Camera className="w-5 h-5" />
-                  <span>
-                    معرض لقطات الشاشة ({todayData.screenshots.length})
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center space-x-1 rtl:space-x-reverse"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  <span>فلاتر المعرض</span>
-                  {Object.values(filters).some(
-                    (f) =>
-                      f !== "all" &&
-                      f !== "" &&
-                      JSON.stringify(f) !== '{"start":"","end":""}'
-                  ) && (
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  )}
-                </Button>
-              </CardTitle>
-              <CardDescription>
-                جميع الصور التي تم التقاطها أثناء العمل - مع إمكانية التصفح
-                والفلترة
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                const screenshots =
-                  showFilters && filteredScreenshots.length >= 0
-                    ? filteredScreenshots
-                    : todayData.screenshots || [];
-                const totalImages = screenshots.length;
-                const totalPages = Math.ceil(
-                  totalImages / galleryImagesPerPage
-                );
-                const startIndex = (galleryPage - 1) * galleryImagesPerPage;
-                const endIndex = startIndex + galleryImagesPerPage;
-                const currentImages = screenshots.slice(startIndex, endIndex);
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                    <Camera className="w-5 h-5" />
+                    <span>
+                      معرض لقطات الشاشة ({todayData.screenshots.length})
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center space-x-1 rtl:space-x-reverse"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>فلاتر المعرض</span>
+                    {Object.values(filters).some(
+                      (f) =>
+                        f !== "all" &&
+                        f !== "" &&
+                        JSON.stringify(f) !== '{"start":"","end":""}'
+                    ) && (
+                        <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                      )}
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  جميع الصور التي تم التقاطها أثناء العمل - مع إمكانية التصفح
+                  والفلترة
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const screenshots =
+                    showFilters && filteredScreenshots.length >= 0
+                      ? filteredScreenshots
+                      : todayData.screenshots || [];
+                  const totalImages = screenshots.length;
+                  const totalPages = Math.ceil(
+                    totalImages / galleryImagesPerPage
+                  );
+                  const startIndex = (galleryPage - 1) * galleryImagesPerPage;
+                  const endIndex = startIndex + galleryImagesPerPage;
+                  const currentImages = screenshots.slice(startIndex, endIndex);
 
-                return (
-                  <>
-                    {/* عرض إحصائيات المعرض */}
-                    {totalImages > 0 && (
-                      <div className="flex justify-between items-center mb-4 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                        <div className="text-sm text-purple-800 dark:text-purple-200">
-                          <span className="font-semibold">
-                            معرض الصور: {totalImages} صورة
-                          </span>
+                  return (
+                    <>
+                      {/* عرض إحصائيات المعرض */}
+                      {totalImages > 0 && (
+                        <div className="flex justify-between items-center mb-4 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                          <div className="text-sm text-purple-800 dark:text-purple-200">
+                            <span className="font-semibold">
+                              معرض الصور: {totalImages} صورة
+                            </span>
+                            {totalPages > 1 && (
+                              <>
+                                <span className="mx-2">|</span>
+                                <span>
+                                  الصفحة {galleryPage} من {totalPages}
+                                </span>
+                              </>
+                            )}
+                          </div>
                           {totalPages > 1 && (
-                            <>
-                              <span className="mx-2">|</span>
-                              <span>
-                                الصفحة {galleryPage} من {totalPages}
-                              </span>
-                            </>
+                            <div className="text-xs text-purple-600 dark:text-purple-300">
+                              عرض {startIndex + 1}-
+                              {Math.min(endIndex, totalImages)} من {totalImages}
+                            </div>
                           )}
                         </div>
-                        {totalPages > 1 && (
-                          <div className="text-xs text-purple-600 dark:text-purple-300">
-                            عرض {startIndex + 1}-
-                            {Math.min(endIndex, totalImages)} من {totalImages}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      )}
 
-                    {/* شبكة الصور المصغرة */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {currentImages.map((screenshot, index) => {
-                        const absoluteIndex = startIndex + index;
-                        return (
-                          <div key={absoluteIndex} className="relative group">
-                            <div
-                              className="w-full h-20 bg-gray-200 dark:bg-gray-700 rounded-lg cursor-pointer overflow-hidden hover:ring-2 hover:ring-purple-500 transition-all"
-                              onClick={() => {
-                                setSelectedScreenshot({
-                                  url: `${BACKEND_BASE_URL}/uploads/screenshots/${screenshot}`,
-                                  timestamp: new Date().toLocaleString("ar-EG"),
-                                  activity: "عمل",
-                                });
-                                setShowScreenshotModal(true);
-                              }}
-                            >
-                              <img
-                                src={`${BACKEND_BASE_URL}/uploads/screenshots/${screenshot}`}
-                                alt={`لقطة ${absoluteIndex + 1}`}
-                                className="w-full h-full object-cover hover:scale-110 transition-transform"
-                                onError={(e) => {
-                                  e.target.src =
-                                    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTkgMTJMMTEgMTRMMTUgMTBNMjEgMTJDMjEgMTYuOTcwNiAxNi45NzA2IDIxIDEyIDIxQzcuMDI5NCAyMSAzIDE2Ljk3MDYgMyAxMkMzIDcuMDI5NCA3LjAyOTQgMyAxMiAzQzE2Ljk3MDYgMyAyMSA3LjAyOTQgMjEgMTJaIiBzdHJva2U9IiM5Q0E0QUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=";
+                      {/* شبكة الصور المصغرة */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {currentImages.map((screenshot, index) => {
+                          const absoluteIndex = startIndex + index;
+                          return (
+                            <div key={absoluteIndex} className="relative group">
+                              <div
+                                className="w-full h-20 bg-gray-200 dark:bg-gray-700 rounded-lg cursor-pointer overflow-hidden hover:ring-2 hover:ring-purple-500 transition-all"
+                                onClick={() => {
+                                  setSelectedScreenshot({
+                                    url: `${BACKEND_BASE_URL}/uploads/screenshots/${screenshot}`,
+                                    timestamp: new Date().toLocaleString("ar-EG"),
+                                    activity: "عمل",
+                                  });
+                                  setShowScreenshotModal(true);
                                 }}
-                              />
+                              >
+                                <img
+                                  src={`${BACKEND_BASE_URL}/uploads/screenshots/${screenshot}`}
+                                  alt={`لقطة ${absoluteIndex + 1}`}
+                                  className="w-full h-full object-cover hover:scale-110 transition-transform"
+                                  onError={(e) => {
+                                    e.target.src =
+                                      "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTkgMTJMMTEgMTRMMTUgMTBNMjEgMTJDMjEgMTYuOTcwNiAxNi45NzA2IDIxIDEyIDIxQzcuMDI5NCAyMSAzIDE2Ljk3MDYgMyAxMkMzIDcuMDI5NCA3LjAyOTQgMyAxMiAzQzE2Ljk3MDYgMyAyMSA3LjAyOTQgMjEgMTJaIiBzdHJva2U9IiM5Q0E0QUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=";
+                                  }}
+                                />
+                              </div>
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition-all flex items-center justify-center">
+                                <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                              {/* رقم الصورة */}
+                              <div className="absolute top-1 right-1 bg-black bg-opacity-60 text-white text-xs px-1.5 py-0.5 rounded">
+                                {absoluteIndex + 1}
+                              </div>
                             </div>
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition-all flex items-center justify-center">
-                              <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                            {/* رقم الصورة */}
-                            <div className="absolute top-1 right-1 bg-black bg-opacity-60 text-white text-xs px-1.5 py-0.5 rounded">
-                              {absoluteIndex + 1}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
 
-                    {/* أزرار التصفح للمعرض */}
-                    {totalPages > 1 && (
-                      <div className="flex justify-center items-center space-x-2 rtl:space-x-reverse mt-6">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setGalleryPage((prev) => Math.max(prev - 1, 1))
-                          }
-                          disabled={galleryPage === 1}
-                          className="flex items-center space-x-1 rtl:space-x-reverse"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                          <span>السابق</span>
-                        </Button>
+                      {/* أزرار التصفح للمعرض */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center items-center space-x-2 rtl:space-x-reverse mt-6">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setGalleryPage((prev) => Math.max(prev - 1, 1))
+                            }
+                            disabled={galleryPage === 1}
+                            className="flex items-center space-x-1 rtl:space-x-reverse"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                            <span>السابق</span>
+                          </Button>
 
-                        <div className="flex space-x-1 rtl:space-x-reverse">
-                          {Array.from(
-                            { length: Math.min(totalPages, 5) },
-                            (_, i) => {
-                              let pageNum;
-                              if (totalPages <= 5) {
-                                pageNum = i + 1;
-                              } else if (galleryPage <= 3) {
-                                pageNum = i + 1;
-                              } else if (galleryPage >= totalPages - 2) {
-                                pageNum = totalPages - 4 + i;
-                              } else {
-                                pageNum = galleryPage - 2 + i;
-                              }
-                              return (
-                                <Button
-                                  key={pageNum}
-                                  variant={
-                                    galleryPage === pageNum
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  size="sm"
-                                  onClick={() => setGalleryPage(pageNum)}
-                                  className={`w-8 h-8 p-0 ${
-                                    galleryPage === pageNum
+                          <div className="flex space-x-1 rtl:space-x-reverse">
+                            {Array.from(
+                              { length: Math.min(totalPages, 5) },
+                              (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (galleryPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (galleryPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = galleryPage - 2 + i;
+                                }
+                                return (
+                                  <Button
+                                    key={pageNum}
+                                    variant={
+                                      galleryPage === pageNum
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() => setGalleryPage(pageNum)}
+                                    className={`w-8 h-8 p-0 ${galleryPage === pageNum
                                       ? "bg-purple-600 text-white"
                                       : "hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                                  }`}
-                                >
-                                  {pageNum}
-                                </Button>
-                              );
+                                      }`}
+                                  >
+                                    {pageNum}
+                                  </Button>
+                                );
+                              }
+                            )}
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setGalleryPage((prev) =>
+                                Math.min(prev + 1, totalPages)
+                              )
                             }
-                          )}
+                            disabled={galleryPage === totalPages}
+                            className="flex items-center space-x-1 rtl:space-x-reverse"
+                          >
+                            <span>التالي</span>
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
                         </div>
+                      )}
 
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setGalleryPage((prev) =>
-                              Math.min(prev + 1, totalPages)
-                            )
-                          }
-                          disabled={galleryPage === totalPages}
-                          className="flex items-center space-x-1 rtl:space-x-reverse"
-                        >
-                          <span>التالي</span>
-                          <ChevronLeft className="w-4 h-4" />
-                        </Button>
+                      {/* معلومات إضافية */}
+                      <div className="mt-4 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          💡 انقر على أي صورة لعرضها بالحجم الكامل
+                        </p>
                       </div>
-                    )}
-
-                    {/* معلومات إضافية */}
-                    <div className="mt-4 text-center">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        💡 انقر على أي صورة لعرضها بالحجم الكامل
-                      </p>
-                    </div>
-                  </>
-                );
-              })()}
-            </CardContent>
-          </Card>
-        )}
+                    </>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
 
         {/* نافذة عرض الصورة */}
         {showScreenshotModal && selectedScreenshot && (
@@ -5162,8 +5143,8 @@ const MePage = ({ user, activeSection = "overview" }) => {
             status: isDynamicWeekend
               ? "عطلة أسبوعية"
               : dynamicHolidayCheck
-              ? `إجازة رسمية - ${dynamicHolidayCheck.name}`
-              : realData.status || "idle",
+                ? `إجازة رسمية - ${dynamicHolidayCheck.name}`
+                : realData.status || "idle",
             isWeekend: updatedIsWeekend,
             hasRealData: true,
 
@@ -5171,45 +5152,45 @@ const MePage = ({ user, activeSection = "overview" }) => {
             totalFormatted:
               totalSeconds > 0
                 ? (() => {
-                    const hours = Math.floor(totalSeconds / 3600);
-                    const minutes = Math.floor((totalSeconds % 3600) / 60);
-                    return hours > 0
-                      ? `${hours} ساعة ${minutes} دقيقة`
-                      : `${minutes} دقيقة`;
-                  })()
+                  const hours = Math.floor(totalSeconds / 3600);
+                  const minutes = Math.floor((totalSeconds % 3600) / 60);
+                  return hours > 0
+                    ? `${hours} ساعة ${minutes} دقيقة`
+                    : `${minutes} دقيقة`;
+                })()
                 : "0 دقيقة",
 
             activeFormatted:
               activeSeconds > 0
                 ? (() => {
-                    const hours = Math.floor(activeSeconds / 3600);
-                    const minutes = Math.floor((activeSeconds % 3600) / 60);
-                    return hours > 0
-                      ? `${hours} ساعة ${minutes} دقيقة`
-                      : `${minutes} دقيقة`;
-                  })()
+                  const hours = Math.floor(activeSeconds / 3600);
+                  const minutes = Math.floor((activeSeconds % 3600) / 60);
+                  return hours > 0
+                    ? `${hours} ساعة ${minutes} دقيقة`
+                    : `${minutes} دقيقة`;
+                })()
                 : "0 دقيقة",
 
             idleFormatted:
               idleSeconds > 0
                 ? (() => {
-                    const hours = Math.floor(idleSeconds / 3600);
-                    const minutes = Math.floor((idleSeconds % 3600) / 60);
-                    return hours > 0
-                      ? `${hours} ساعة ${minutes} دقيقة`
-                      : `${minutes} دقيقة`;
-                  })()
+                  const hours = Math.floor(idleSeconds / 3600);
+                  const minutes = Math.floor((idleSeconds % 3600) / 60);
+                  return hours > 0
+                    ? `${hours} ساعة ${minutes} دقيقة`
+                    : `${minutes} دقيقة`;
+                })()
                 : "0 دقيقة",
 
             breakFormatted:
               breakSeconds > 0
                 ? (() => {
-                    const hours = Math.floor(breakSeconds / 3600);
-                    const minutes = Math.floor((breakSeconds % 3600) / 60);
-                    return hours > 0
-                      ? `${hours} ساعة ${minutes} دقيقة`
-                      : `${minutes} دقيقة`;
-                  })()
+                  const hours = Math.floor(breakSeconds / 3600);
+                  const minutes = Math.floor((breakSeconds % 3600) / 60);
+                  return hours > 0
+                    ? `${hours} ساعة ${minutes} دقيقة`
+                    : `${minutes} دقيقة`;
+                })()
                 : "0 دقيقة",
           };
         }
@@ -5243,48 +5224,48 @@ const MePage = ({ user, activeSection = "overview" }) => {
           totalFormatted:
             totalSeconds > 0
               ? (() => {
-                  const hours = Math.floor(totalSeconds / 3600);
-                  const minutes = Math.floor((totalSeconds % 3600) / 60);
-                  return hours > 0
-                    ? `${hours} ساعة ${minutes} دقيقة`
-                    : `${minutes} دقيقة`;
-                })()
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                return hours > 0
+                  ? `${hours} ساعة ${minutes} دقيقة`
+                  : `${minutes} دقيقة`;
+              })()
               : "0 دقيقة",
 
           // تنسيق وقت النشاط
           activeFormatted:
             activeSeconds > 0
               ? (() => {
-                  const hours = Math.floor(activeSeconds / 3600);
-                  const minutes = Math.floor((activeSeconds % 3600) / 60);
-                  return hours > 0
-                    ? `${hours} ساعة ${minutes} دقيقة`
-                    : `${minutes} دقيقة`;
-                })()
+                const hours = Math.floor(activeSeconds / 3600);
+                const minutes = Math.floor((activeSeconds % 3600) / 60);
+                return hours > 0
+                  ? `${hours} ساعة ${minutes} دقيقة`
+                  : `${minutes} دقيقة`;
+              })()
               : "0 دقيقة",
 
           // تنسيق وقت الخمول
           idleFormatted:
             idleSeconds > 0
               ? (() => {
-                  const hours = Math.floor(idleSeconds / 3600);
-                  const minutes = Math.floor((idleSeconds % 3600) / 60);
-                  return hours > 0
-                    ? `${hours} ساعة ${minutes} دقيقة`
-                    : `${minutes} دقيقة`;
-                })()
+                const hours = Math.floor(idleSeconds / 3600);
+                const minutes = Math.floor((idleSeconds % 3600) / 60);
+                return hours > 0
+                  ? `${hours} ساعة ${minutes} دقيقة`
+                  : `${minutes} دقيقة`;
+              })()
               : "0 دقيقة",
 
           // تنسيق وقت الاستراحة
           breakFormatted:
             breakSeconds > 0
               ? (() => {
-                  const hours = Math.floor(breakSeconds / 3600);
-                  const minutes = Math.floor((breakSeconds % 3600) / 60);
-                  return hours > 0
-                    ? `${hours} ساعة ${minutes} دقيقة`
-                    : `${minutes} دقيقة`;
-                })()
+                const hours = Math.floor(breakSeconds / 3600);
+                const minutes = Math.floor((breakSeconds % 3600) / 60);
+                return hours > 0
+                  ? `${hours} ساعة ${minutes} دقيقة`
+                  : `${minutes} دقيقة`;
+              })()
               : "0 دقيقة",
         };
       });
@@ -5367,42 +5348,42 @@ const MePage = ({ user, activeSection = "overview" }) => {
           totalFormatted:
             totalHours > 0
               ? (() => {
-                  const hours = Math.floor(totalHours);
-                  const minutes = Math.floor((totalHours % 1) * 60);
-                  return hours > 0
-                    ? `${hours} ساعة ${minutes} دقيقة`
-                    : `${minutes} دقيقة`;
-                })()
+                const hours = Math.floor(totalHours);
+                const minutes = Math.floor((totalHours % 1) * 60);
+                return hours > 0
+                  ? `${hours} ساعة ${minutes} دقيقة`
+                  : `${minutes} دقيقة`;
+              })()
               : "0 دقيقة",
           activeFormatted:
             activeHours > 0
               ? (() => {
-                  const hours = Math.floor(activeHours);
-                  const minutes = Math.floor((activeHours % 1) * 60);
-                  return hours > 0
-                    ? `${hours} ساعة ${minutes} دقيقة`
-                    : `${minutes} دقيقة`;
-                })()
+                const hours = Math.floor(activeHours);
+                const minutes = Math.floor((activeHours % 1) * 60);
+                return hours > 0
+                  ? `${hours} ساعة ${minutes} دقيقة`
+                  : `${minutes} دقيقة`;
+              })()
               : "0 دقيقة",
           idleFormatted:
             idleHours > 0
               ? (() => {
-                  const hours = Math.floor(idleHours);
-                  const minutes = Math.floor((idleHours % 1) * 60);
-                  return hours > 0
-                    ? `${hours} ساعة ${minutes} دقيقة`
-                    : `${minutes} دقيقة`;
-                })()
+                const hours = Math.floor(idleHours);
+                const minutes = Math.floor((idleHours % 1) * 60);
+                return hours > 0
+                  ? `${hours} ساعة ${minutes} دقيقة`
+                  : `${minutes} دقيقة`;
+              })()
               : "0 دقيقة",
           breakFormatted:
             breakHours > 0
               ? (() => {
-                  const hours = Math.floor(breakHours);
-                  const minutes = Math.floor((breakHours % 1) * 60);
-                  return hours > 0
-                    ? `${hours} ساعة ${minutes} دقيقة`
-                    : `${minutes} دقيقة`;
-                })()
+                const hours = Math.floor(breakHours);
+                const minutes = Math.floor((breakHours % 1) * 60);
+                return hours > 0
+                  ? `${hours} ساعة ${minutes} دقيقة`
+                  : `${minutes} دقيقة`;
+              })()
               : "0 دقيقة",
         });
         continue; // تخطي إضافة السجل مرة أخرى
@@ -5439,32 +5420,32 @@ const MePage = ({ user, activeSection = "overview" }) => {
         totalFormatted:
           totalHours > 0
             ? (() => {
-                const hours = Math.floor(totalHours);
-                const minutes = Math.floor((totalHours % 1) * 60);
-                return hours > 0
-                  ? `${hours} ساعة ${minutes} دقيقة`
-                  : `${minutes} دقيقة`;
-              })()
+              const hours = Math.floor(totalHours);
+              const minutes = Math.floor((totalHours % 1) * 60);
+              return hours > 0
+                ? `${hours} ساعة ${minutes} دقيقة`
+                : `${minutes} دقيقة`;
+            })()
             : "0 دقيقة",
         activeFormatted:
           activeHours > 0
             ? (() => {
-                const hours = Math.floor(activeHours);
-                const minutes = Math.floor((activeHours % 1) * 60);
-                return hours > 0
-                  ? `${hours} ساعة ${minutes} دقيقة`
-                  : `${minutes} دقيقة`;
-              })()
+              const hours = Math.floor(activeHours);
+              const minutes = Math.floor((activeHours % 1) * 60);
+              return hours > 0
+                ? `${hours} ساعة ${minutes} دقيقة`
+                : `${minutes} دقيقة`;
+            })()
             : "0 دقيقة",
         idleFormatted:
           idleHours > 0
             ? (() => {
-                const hours = Math.floor(idleHours);
-                const minutes = Math.floor((idleHours % 1) * 60);
-                return hours > 0
-                  ? `${hours} ساعة ${minutes} دقيقة`
-                  : `${minutes} دقيقة`;
-              })()
+              const hours = Math.floor(idleHours);
+              const minutes = Math.floor((idleHours % 1) * 60);
+              return hours > 0
+                ? `${hours} ساعة ${minutes} دقيقة`
+                : `${minutes} دقيقة`;
+            })()
             : "0 دقيقة",
         breakFormatted: "0 دقيقة",
       });
@@ -5950,13 +5931,12 @@ const MePage = ({ user, activeSection = "overview" }) => {
                     {attendanceDataEmployee.map((dayData) => (
                       <tr
                         key={dayData.id}
-                        className={`hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors duration-200 ${
-                          dayData.isToday
-                            ? "bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-600"
-                            : dayData.isWeekend
+                        className={`hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors duration-200 ${dayData.isToday
+                          ? "bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-600"
+                          : dayData.isWeekend
                             ? "bg-gray-100 dark:bg-gray-800"
                             : ""
-                        }`}
+                          }`}
                       >
                         <td className="border border-amber-200 dark:border-amber-700 px-4 py-3 text-right text-sm">
                           <div className="flex items-center justify-between">
@@ -6475,11 +6455,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
                         {[1, 2, 3, 4, 5].map((i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 ${
-                              i <= 4
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300 dark:text-gray-600"
-                            }`}
+                            className={`w-4 h-4 ${i <= 4
+                              ? "text-yellow-400 fill-current"
+                              : "text-gray-300 dark:text-gray-600"
+                              }`}
                           />
                         ))}
                       </div>
@@ -6492,11 +6471,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
                         {[1, 2, 3, 4, 5].map((i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 ${
-                              i <= 5
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300 dark:text-gray-600"
-                            }`}
+                            className={`w-4 h-4 ${i <= 5
+                              ? "text-yellow-400 fill-current"
+                              : "text-gray-300 dark:text-gray-600"
+                              }`}
                           />
                         ))}
                       </div>
@@ -6509,11 +6487,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
                         {[1, 2, 3, 4, 5].map((i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 ${
-                              i <= 4
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300 dark:text-gray-600"
-                            }`}
+                            className={`w-4 h-4 ${i <= 4
+                              ? "text-yellow-400 fill-current"
+                              : "text-gray-300 dark:text-gray-600"
+                              }`}
                           />
                         ))}
                       </div>
@@ -6695,13 +6672,12 @@ const MePage = ({ user, activeSection = "overview" }) => {
                         {request.type}
                       </h4>
                       <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          request.color === "green"
-                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                            : request.color === "yellow"
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${request.color === "green"
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                          : request.color === "yellow"
                             ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
                             : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                        }`}
+                          }`}
                       >
                         {request.status}
                       </span>
@@ -6904,11 +6880,10 @@ const MePage = ({ user, activeSection = "overview" }) => {
               <button
                 key={tab.id}
                 onClick={() => navigate(`/me/${tab.id}`)}
-                className={`flex items-center space-x-2 rtl:space-x-reverse px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  currentSection === tab.id
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                }`}
+                className={`flex items-center space-x-2 rtl:space-x-reverse px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${currentSection === tab.id
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>

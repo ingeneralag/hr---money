@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { useTheme } from "../contexts/ThemeContext";
+import { authService } from "../services/api";
 
 const LoginPage = ({ onLogin }) => {
   const [formData, setFormData] = useState({
@@ -109,22 +110,7 @@ const LoginPage = ({ onLogin }) => {
 
       console.log("🚀 دخول سريع:", credentials);
 
-      const response = await fetch(
-        "http://localhost:5001/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(credentials),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`فشل في تسجيل الدخول: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await authService.login(credentials.identifier, credentials.password);
 
       if (data.success && data.data && data.data.token) {
         localStorage.setItem("token", data.data.token);

@@ -679,6 +679,26 @@ export const transactionService = {
       throw error;
     }
   },
+
+  // جلب تفاصيل المديونية
+  getDebtDetails: async (transactionId) => {
+    try {
+      const response = await api.get(`/transactions/${transactionId}/debt-details`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // دفع المديونية
+  payDebt: async (transactionId, paymentData) => {
+    try {
+      const response = await api.post(`/transactions/${transactionId}/pay`, paymentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
 };
 
 // خدمات الرواتب

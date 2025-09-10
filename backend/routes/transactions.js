@@ -521,6 +521,12 @@ router.get("/report", requireAuth, async (req, res) => {
     const PDFDocument = require('pdfkit');
     const path = require('path');
 
+    // دالة لعكس أرقام الأرقام
+    function reverseNumberDigits(number) {
+      const formatted = number.toLocaleString('en-US');
+      return formatted.split('').reverse().join('');
+    }
+
     // تحميل الخط العربي
     const CAIRO_FONT_PATH = path.join(__dirname, '..', 'fonts', 'Cairo-Regular.ttf');
 
@@ -600,25 +606,25 @@ router.get("/report", requireAuth, async (req, res) => {
     // صف الإيرادات
     doc.rect(50, summaryY, 500, summaryRowHeight).stroke();
     doc.text('إجمالي الإيرادات', 400, summaryY + 8, { features: ['rtla'] });
-    doc.text(`${summary.totalIncome.toLocaleString('ar-EG')} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
+    doc.text(`${reverseNumberDigits(summary.totalIncome)} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
 
     // صف المصروفات
     summaryY += summaryRowHeight;
     doc.rect(50, summaryY, 500, summaryRowHeight).stroke();
     doc.text('إجمالي المصروفات', 400, summaryY + 8, { features: ['rtla'] });
-    doc.text(`${summary.totalExpense.toLocaleString('ar-EG')} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
+    doc.text(`${reverseNumberDigits(summary.totalExpense)} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
 
     // صف المديونيات
     summaryY += summaryRowHeight;
     doc.rect(50, summaryY, 500, summaryRowHeight).stroke();
     doc.text('إجمالي المديونيات', 400, summaryY + 8, { features: ['rtla'] });
-    doc.text(`${summary.totalDebts.toLocaleString('ar-EG')} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
+    doc.text(`${reverseNumberDigits(summary.totalDebts)} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
 
     // صف صافي الرصيد
     summaryY += summaryRowHeight;
     doc.rect(50, summaryY, 500, summaryRowHeight).stroke();
     doc.text('صافي الرصيد', 400, summaryY + 8, { features: ['rtla'] });
-    doc.text(`${(summary.totalIncome - summary.totalExpense).toLocaleString('ar-EG')} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
+    doc.text(`${reverseNumberDigits(summary.totalIncome - summary.totalExpense)} جنيه`, 150, summaryY + 8, { features: ['rtla'] });
 
     // إضافة مسافة بعد جدول الملخص
     doc.y = summaryY + summaryRowHeight + 40; // 40 pixels extra space
@@ -701,7 +707,7 @@ router.get("/report", requireAuth, async (req, res) => {
 
       // المبلغ
       doc.text(
-        `${txn.amount.toLocaleString('ar-EG')} جنيه`,
+        `${reverseNumberDigits(txn.amount)} جنيه`,
         currentX + 10,
         currentY + 10,
         { features: ['rtla'] }
