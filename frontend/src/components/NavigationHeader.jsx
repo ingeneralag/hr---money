@@ -99,98 +99,23 @@ const NavigationHeader = () => {
   }, [])
 
   const navigationItems = [
-    {
-      id: 'dashboard',
-      title: 'لوحة التحكم',
-      icon: LayoutDashboard,
-      path: '/',
-      roles: ['admin', 'employee']
-    },
-    {
-      id: 'transactions',
-      title: 'المعاملات المالية',
-      icon: DollarSign,
-      path: '/transactions',
-      roles: ['admin']
-    },
-    {
-      id: 'approvals',
-      title: 'الموافقات',
-      icon: CheckCircle,
-      path: '/approvals',
-      roles: ['admin']
-    },
-    {
-      id: 'employees',
-      title: 'الموظفين',
-      icon: Users,
-      path: '/employees',
-      roles: ['admin']
-    },
-    {
-      id: 'clients',
-      title: 'العملاء',
-      icon: Building,
-      path: '/clients',
-      roles: ['admin']
-    },
-    {
-      id: 'payroll',
-      title: 'الرواتب',
-      icon: CreditCard,
-      path: '/payroll',
-      roles: ['admin']
-    },
-    {
-      id: 'categories',
-      title: 'التصنيفات',
-      icon: FolderOpen,
-      path: '/categories',
-      roles: ['admin']
-    },
-    {
-      id: 'system-logs',
-      title: 'لوجات النظام',
-      icon: Activity,
-      path: '/system-logs',
-      roles: ['admin']
-    },
-    {
-      id: 'me',
-      title: 'حسابي الشخصي',
-      icon: UserCircle,
-      path: '/me/overview',
-      roles: ['admin', 'employee']
-    },
-    {
-      id: 'employees-list',
-      title: 'دليل الموظفين',
-      icon: BookOpen,
-      path: '/employees-list',
-      roles: ['employee']
-    },
-
-    {
-      id: 'whatsapp',
-      title: 'واتساب',
-      icon: MessageCircle,
-      path: '/whatsapp',
-      roles: ['admin']
-    },
-    {
-      id: 'settings',
-      title: 'الإعدادات',
-      icon: Settings,
-      path: '/settings',
-      roles: ['admin']
-    },
-    {
-      id: 'system-logs',
-      title: 'سجل النظام',
-      icon: Activity,
-      path: '/system-logs',
-      roles: ['admin']
-    }
+    { id: 'dashboard', title: 'لوحة التحكم', icon: LayoutDashboard, path: '/', roles: ['admin', 'employee'] },
+    { id: 'transactions', title: 'المعاملات المالية', icon: DollarSign, path: '/transactions', roles: ['admin'] },
+    { id: 'wallets', title: 'المحافظ المالية', icon: CreditCard, path: '/wallets', roles: ['admin'] },
+    { id: 'approvals', title: 'الموافقات', icon: CheckCircle, path: '/approvals', roles: ['admin'] },
+    { id: 'employees', title: 'الموظفين', icon: Users, path: '/employees', roles: ['admin'] },
+    { id: 'clients', title: 'العملاء', icon: Building, path: '/clients', roles: ['admin'] },
+    { id: 'projects', title: 'المشاريع', icon: FolderOpen, path: '/projects', roles: ['admin'] },
+    { id: 'invoices', title: 'الفواتير', icon: CreditCard, path: '/invoices', roles: ['admin'] },
+    { id: 'payroll', title: 'الرواتب', icon: CreditCard, path: '/payroll', roles: ['admin'] },
+    { id: 'tax', title: 'الضرائب', icon: DollarSign, path: '/tax', roles: ['admin'] },
+    { id: 'reports', title: 'التقارير', icon: Activity, path: '/reports', roles: ['admin'] },
+    { id: 'assets', title: 'الأصول والخسائر', icon: BookOpen, path: '/assets', roles: ['admin'] },
+    { id: 'categories', title: 'الأقسام والتصنيفات', icon: FolderOpen, path: '/departments', roles: ['admin'] },
+    { id: 'settings', title: 'الإعدادات', icon: Settings, path: '/settings', roles: ['admin'] },
+    { id: 'system-logs', title: 'سجل النظام', icon: Activity, path: '/system-logs', roles: ['admin'] },
+    { id: 'me', title: 'حسابي الشخصي', icon: UserCircle, path: '/me/overview', roles: ['admin', 'employee'] },
+    { id: 'employees-list', title: 'دليل الموظفين', icon: BookOpen, path: '/employees-list', roles: ['employee'] },
   ]
 
   // فلترة العناصر حسب دور المستخدم
@@ -248,7 +173,7 @@ const NavigationHeader = () => {
         
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center justify-between h-12 lg:h-14">
-          <nav className="flex space-x-1 lg:space-x-2 rtl:space-x-reverse overflow-x-auto scrollbar-hide">
+          <nav className="flex space-x-1 lg:space-x-2 rtl:space-x-reverse overflow-x-auto cursor-grab active:cursor-grabbing" style={{scrollbarWidth:'none',msOverflowStyle:'none',WebkitOverflowScrolling:'touch'}} onWheel={(e) => { e.currentTarget.scrollLeft -= e.deltaY; e.preventDefault(); }} onMouseDown={(e) => { const el = e.currentTarget; el._dragging = true; el._startX = e.pageX + el.scrollLeft; }} onMouseMove={(e) => { const el = e.currentTarget; if (!el._dragging) return; e.preventDefault(); el.scrollLeft = el._startX - e.pageX; }} onMouseUp={(e) => { e.currentTarget._dragging = false; }} onMouseLeave={(e) => { e.currentTarget._dragging = false; }}>
             {filteredItems.map((item) => {
               const Icon = item.icon
               const isActive = isActiveRoute(item.path)

@@ -26,6 +26,17 @@ import TransactionsPage from "./pages/TransactionsPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import "./index.css";
 import SettingsPage from "./pages/SettingsPage";
+import CompanySettingsPage from "./pages/CompanySettingsPage";
+import ProjectsPage from "./pages/ProjectsPage";
+import InvoicesPage from "./pages/InvoicesPage";
+import TaxPage from "./pages/TaxPage";
+import LossesPage from "./pages/LossesPage";
+import ReportsPage from "./pages/ReportsPage";
+import RolesPage from "./pages/RolesPage";
+import DepartmentsPage from "./pages/DepartmentsPage";
+import DeferredRevenuePage from "./pages/DeferredRevenuePage";
+import WalletsPage from "./pages/WalletsPage";
+import AssetsPage from "./pages/AssetsPage";
 import SystemLogsPage from "./pages/SystemLogsPage";
 import WhatsAppConnectionPage from "./pages/WhatsAppConnectionPage";
 import WhatsAppDashboard from "./pages/WhatsAppDashboard";
@@ -529,6 +540,102 @@ function App() {
                       to={user.role === "admin" ? "/" : "/me/overview"}
                       replace
                     />
+                  )
+                }
+              />
+
+              {/* صفحة المشاريع */}
+              <Route
+                path="/projects"
+                element={
+                  !user ? (
+                    <Navigate to="/login" replace />
+                  ) : (
+                    <Layout user={user} onLogout={handleLogout}>
+                      <ProjectsPage />
+                    </Layout>
+                  )
+                }
+              />
+
+              {/* صفحة المحافظ المالية */}
+              <Route path="/wallets" element={!user ? <Navigate to="/login" replace /> : user.role === "admin" ? (<Layout user={user} onLogout={handleLogout}><WalletsPage /></Layout>) : (<Navigate to="/" replace />)} />
+
+              {/* صفحة الأدوار والصلاحيات */}
+              <Route path="/roles" element={!user ? <Navigate to="/login" replace /> : user.role === "admin" ? (<Layout user={user} onLogout={handleLogout}><RolesPage /></Layout>) : (<Navigate to="/" replace />)} />
+
+              {/* صفحة الأقسام */}
+              <Route path="/departments" element={!user ? <Navigate to="/login" replace /> : user.role === "admin" ? (<Layout user={user} onLogout={handleLogout}><DepartmentsPage /></Layout>) : (<Navigate to="/" replace />)} />
+
+              {/* صفحة الإيرادات المؤجلة */}
+              <Route path="/deferred-revenue" element={!user ? <Navigate to="/login" replace /> : (<Layout user={user} onLogout={handleLogout}><DeferredRevenuePage /></Layout>)} />
+
+              {/* صفحة التقارير */}
+              <Route
+                path="/reports"
+                element={!user ? <Navigate to="/login" replace /> : (
+                  <Layout user={user} onLogout={handleLogout}><ReportsPage /></Layout>
+                )}
+              />
+
+              {/* صفحة الخسائر */}
+              <Route
+                path="/losses"
+                element={!user ? <Navigate to="/login" replace /> : (
+                  <Layout user={user} onLogout={handleLogout}><LossesPage /></Layout>
+                )}
+              />
+
+              {/* صفحة الأصول والصيانة */}
+              <Route
+                path="/assets"
+                element={!user ? <Navigate to="/login" replace /> : (
+                  <Layout user={user} onLogout={handleLogout}><AssetsPage /></Layout>
+                )}
+              />
+
+              {/* صفحة الضرائب */}
+              <Route
+                path="/tax"
+                element={
+                  !user ? (
+                    <Navigate to="/login" replace />
+                  ) : user.role === "admin" ? (
+                    <Layout user={user} onLogout={handleLogout}>
+                      <TaxPage />
+                    </Layout>
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
+
+              {/* صفحة الفواتير */}
+              <Route
+                path="/invoices"
+                element={
+                  !user ? (
+                    <Navigate to="/login" replace />
+                  ) : (
+                    <Layout user={user} onLogout={handleLogout}>
+                      <InvoicesPage />
+                    </Layout>
+                  )
+                }
+              />
+
+              {/* صفحة إعدادات الشركة */}
+              <Route
+                path="/company-settings"
+                element={
+                  !user ? (
+                    <Navigate to="/login" replace />
+                  ) : user.role === "admin" ? (
+                    <Layout user={user} onLogout={handleLogout}>
+                      <CompanySettingsPage />
+                    </Layout>
+                  ) : (
+                    <Navigate to="/" replace />
                   )
                 }
               />

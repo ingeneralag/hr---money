@@ -85,7 +85,7 @@ const TopHeader = ({ user, onLogout }) => {
   const unreadCount = notifications.filter(n => !n.read).length
 
   return (
-    <div className="top-header bg-gradient-to-r from-white via-blue-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg backdrop-blur-sm">
+    <div className="top-header bg-gradient-to-r from-white via-blue-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg backdrop-blur-sm relative z-[100]">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <div className="flex justify-between items-center h-14 sm:h-16">
           

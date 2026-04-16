@@ -13,6 +13,7 @@
     "reset": "node resetDatabase.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
     "arabic-persian-reshaper": "^1.0.1",
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",

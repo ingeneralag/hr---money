@@ -75,10 +75,10 @@ const DashboardPage = () => {
     
     try {
       const [statsResponse, employeesResponse, transactionsResponse, analyticsResponse] = await Promise.all([
-        api.get('/api/dashboard/stats').catch(() => ({ data: { data: {} }})),
-        api.get('/api/dashboard/active-employees').catch(() => ({ data: { data: [] }})),
-        api.get('/api/transactions/recent').catch(() => ({ data: { data: [] }})),
-        api.get('/api/dashboard/analytics').catch(() => ({ data: { data: {} }}))
+        api.get('/dashboard/stats').catch(() => ({ data: { data: {} }})),
+        api.get('/dashboard/active-employees').catch(() => ({ data: { data: [] }})),
+        api.get('/transactions/recent').catch(() => ({ data: { data: [] }})),
+        api.get('/dashboard/analytics').catch(() => ({ data: { data: {} }}))
       ]);
 
       // معالجة بيانات الإحصائيات
@@ -159,31 +159,34 @@ const DashboardPage = () => {
   }, []);
 
   // بطاقة الإحصائيات
-  const StatCard = ({ title, value, change, icon: Icon, positive }) => (
-    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
-          {title}
-        </CardTitle>
-        <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-          {typeof value === 'number' && title.includes('إيرادات') ? formatCurrency(value) : 
-           typeof value === 'number' && title.includes('مصروفات') ? formatCurrency(value) : 
-           value}
-        </div>
-        {change !== undefined && (
-          <p className={`text-xs flex items-center gap-1 mt-1 ${
-            positive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-          }`}>
-            {positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {Math.abs(change)}% من الشهر الماضي
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
+  const StatCard = ({ title, value, change, icon: Icon, positive, color = 'blue' }) => {
+    const colorMap = {
+      green: { bg: 'from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/10', icon: 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400', val: 'text-green-700 dark:text-green-300', label: 'text-green-600 dark:text-green-400' },
+      red: { bg: 'from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/10', icon: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400', val: 'text-red-700 dark:text-red-300', label: 'text-red-600 dark:text-red-400' },
+      blue: { bg: 'from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10', icon: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400', val: 'text-blue-700 dark:text-blue-300', label: 'text-blue-600 dark:text-blue-400' },
+      orange: { bg: 'from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-800/10', icon: 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400', val: 'text-orange-700 dark:text-orange-300', label: 'text-orange-600 dark:text-orange-400' },
+    }
+    const c = colorMap[color]
+    return (
+      <Card className={`bg-gradient-to-br ${c.bg} border border-gray-200/60 dark:border-gray-700/60 overflow-hidden rounded-xl`}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className={`text-sm font-medium ${c.label}`}>{title}</CardTitle>
+          <div className={`p-2.5 rounded-xl ${c.icon}`}><Icon className="h-5 w-5" /></div>
+        </CardHeader>
+        <CardContent>
+          <div className={`text-2xl font-bold ${c.val}`}>
+            {typeof value === 'number' && (title.includes('إيرادات') || title.includes('مصروفات')) ? formatCurrency(value) : value}
+          </div>
+          {change !== undefined && (
+            <p className={`text-xs flex items-center gap-1 mt-1.5 ${positive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {Math.abs(change)}% من الشهر الماضي
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    )
+  };
 
   if (loading) {
     return (
@@ -234,30 +237,10 @@ const DashboardPage = () => {
 
       {/* الإحصائيات الرئيسية */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-        <StatCard
-          title="إجمالي الإيرادات"
-          value={stats.totalRevenue}
-          change={stats.revenueChange}
-          icon={DollarSign}
-          positive={stats.revenueChange > 0}
-        />
-        <StatCard
-          title="إجمالي المصروفات"
-          value={stats.totalExpenses}
-          change={stats.expensesChange}
-          icon={TrendingDown}
-          positive={stats.expensesChange < 0}
-        />
-        <StatCard
-          title="عدد الموظفين"
-          value={stats.totalEmployees}
-          icon={Users}
-        />
-        <StatCard
-          title="رواتب معلقة"
-          value={stats.pendingPayrolls}
-          icon={AlertTriangle}
-        />
+        <StatCard title="إجمالي الإيرادات" value={stats.totalRevenue} change={stats.revenueChange} icon={DollarSign} positive={stats.revenueChange > 0} color="green" />
+        <StatCard title="إجمالي المصروفات" value={stats.totalExpenses} change={stats.expensesChange} icon={TrendingDown} positive={stats.expensesChange < 0} color="red" />
+        <StatCard title="عدد الموظفين" value={stats.totalEmployees} icon={Users} color="blue" />
+        <StatCard title="رواتب معلقة" value={stats.pendingPayrolls} icon={AlertTriangle} color="orange" />
       </div>
 
       {/* الموظفين النشطين */}
@@ -431,61 +414,58 @@ const DashboardPage = () => {
       </Card>
 
       {/* الرسوم البيانية */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* الرسم البياني الشهري */}
-        <Card>
-          <CardHeader>
-            <CardTitle>الإيرادات والمصروفات الشهرية</CardTitle>
+        <Card className="rounded-xl border border-gray-200/60 dark:border-gray-700/60 overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">الإيرادات والمصروفات الشهرية</CardTitle>
             <CardDescription>مقارنة الأداء المالي خلال الأشهر الماضية</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value) => formatCurrency(value)} 
-                  labelFormatter={(label) => `شهر ${label}`}
-                />
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="name" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip formatter={(value) => formatCurrency(value)} labelFormatter={(label) => `شهر ${label}`}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
                 <Legend />
-                <Bar dataKey="income" fill="#10b981" name="الإيرادات" />
-                <Bar dataKey="expenses" fill="#ef4444" name="المصروفات" />
-                <Bar dataKey="salaries" fill="#3b82f6" name="الرواتب" />
+                <Bar dataKey="income" fill="#10b981" name="الإيرادات" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" fill="#ef4444" name="المصروفات" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="salaries" fill="#3b82f6" name="الرواتب" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
         {/* الرسم الدائري للمصروفات */}
-        <Card>
-          <CardHeader>
-            <CardTitle>توزيع المصروفات</CardTitle>
+        <Card className="rounded-xl border border-gray-200/60 dark:border-gray-700/60 overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">توزيع المصروفات</CardTitle>
             <CardDescription>تصنيف المصروفات حسب النوع</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie
-                  data={expenseCategories}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
+                <Pie data={expenseCategories} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3}
+                  dataKey="value" strokeWidth={2} stroke="rgba(0,0,0,0.1)">
                   {expenseCategories.map((entry, index) => (
                     <Cell key={`expense-cell-${index}`} fill={entry.color || EXPENSE_CATEGORIES_COLORS[index % EXPENSE_CATEGORIES_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  formatter={(value) => formatCurrency(value)}
-                  labelFormatter={(label) => `فئة: ${label}`}
-                />
+                <Tooltip formatter={(value) => formatCurrency(value)}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
               </PieChart>
             </ResponsiveContainer>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {expenseCategories.filter(c => c.value > 0).map((cat, i) => (
+                <div key={i} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: cat.color || EXPENSE_CATEGORIES_COLORS[i % EXPENSE_CATEGORIES_COLORS.length] }} />
+                  <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 truncate">{cat.name}</span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-white">{formatCurrency(cat.value)}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -545,10 +525,10 @@ const DashboardPage = () => {
       </Card>
 
       {/* أحدث المعاملات */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>أحدث المعاملات</CardTitle>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card className="rounded-xl border border-gray-200/60 dark:border-gray-700/60">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">أحدث المعاملات</CardTitle>
             <CardDescription>آخر العمليات المالية المسجلة</CardDescription>
           </CardHeader>
           <CardContent>
@@ -591,9 +571,9 @@ const DashboardPage = () => {
         </Card>
 
         {/* إحصائيات سريعة */}
-        <Card>
-          <CardHeader>
-            <CardTitle>إحصائيات سريعة</CardTitle>
+        <Card className="rounded-xl border border-gray-200/60 dark:border-gray-700/60">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">إحصائيات سريعة</CardTitle>
             <CardDescription>ملخص الأداء المالي الحالي</CardDescription>
           </CardHeader>
           <CardContent>

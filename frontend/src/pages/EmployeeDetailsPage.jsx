@@ -201,12 +201,12 @@ const EmployeeDetailsPage = () => {
           experience: response.data.experience || "",
           skills: response.data.skills || [],
           allowances: {
-            transport:
+            transportation:
               response.data.allowances?.transportation ||
               response.data.allowances?.transport ||
               response.data.benefits?.transportationAllowance ||
               0,
-            food:
+            meal:
               response.data.allowances?.meal ||
               response.data.allowances?.food ||
               response.data.benefits?.mealAllowance ||
@@ -215,27 +215,16 @@ const EmployeeDetailsPage = () => {
               response.data.allowances?.housing ||
               response.data.benefits?.housingAllowance ||
               0,
-            performance:
-              response.data.allowances?.performance ||
-              response.data.benefits?.performanceAllowance ||
-              0,
-            ...response.data.allowances,
           },
           deductions: {
-            insurance:
+            socialInsurance:
               response.data.deductions?.socialInsurance ||
               response.data.deductions?.insurance ||
               0,
-            taxes:
+            tax:
               response.data.deductions?.tax ||
               response.data.deductions?.taxes ||
               0,
-            loans:
-              response.data.deductions?.loans ||
-              response.data.deductions?.loan ||
-              0,
-            absence: response.data.deductions?.absence || 0,
-            ...response.data.deductions,
           },
           monthlyAdjustments: response.data.monthlyAdjustments || {
             bonuses: [],
@@ -311,7 +300,7 @@ const EmployeeDetailsPage = () => {
       // استخدام نفس API endpoint المستخدم في MePage مع معامل الشهر لضمان تطابق البيانات
       const trackingResponse = await fetch(
         process.env.REACT_APP_API_URL +
-          `/daily-attendance/user-records/${employee.userId?._id}?month=${selectedMonth}`,
+          `/daily-attendance/user-records/${employee.userId?._id || employee.userId || employee.user_id}?month=${selectedMonth}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -1317,7 +1306,7 @@ const EmployeeDetailsPage = () => {
               </p>
               <div className="flex items-center space-x-4 rtl:space-x-reverse mt-2">
                 <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
-                  EMP-{employeeIdString.padStart(3, "0")}
+                  {employee.employeeNumber || employee.employee_number || `EMP-${employeeIdString.padStart(3, "0")}`}
                 </span>
                 <span className="px-2 py-1 rounded-full text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
                   {employee.status || "نشط"}
@@ -1368,6 +1357,54 @@ const EmployeeDetailsPage = () => {
               )}
             </div>
           </div>
+        </div>
+
+        {/* زرار إيقاف/تشغيل تتبع الحضور */}
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem("token");
+                const response = await fetch(
+                  `${process.env.REACT_APP_API_URL}/employees/${employee._id || employee.id}/toggle-attendance`,
+                  {
+                    method: "PUT",
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      "Content-Type": "application/json",
+                    },
+                  }
+                );
+                const result = await response.json();
+                if (result.success) {
+                  setEmployee(prev => ({
+                    ...prev,
+                    attendancePaused: !prev.attendancePaused,
+                  }));
+                  setNotification({
+                    type: "success",
+                    message: result.message,
+                  });
+                  setTimeout(() => setNotification(null), 3000);
+                }
+              } catch (err) {
+                console.error("Error toggling attendance:", err);
+              }
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              employee.attendancePaused
+                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700"
+                : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-300 dark:border-green-700"
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            {employee.attendancePaused ? "تتبع الحضور متوقف - اضغط للتشغيل" : "تتبع الحضور مفعل - اضغط للإيقاف"}
+          </button>
+          {employee.attendancePaused && (
+            <span className="text-xs text-yellow-600 dark:text-yellow-400">
+              خصومات التأخير معلقة لهذا الموظف
+            </span>
+          )}
         </div>
       </div>
 

@@ -2,9 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-// إعادة تفعيل الاتصال بقاعدة البيانات
-const connectDB = require("./config/database");
-const mongoose = require("mongoose");
+const { connectDB, supabase } = require("./config/database");
+const bcrypt = require("bcryptjs");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 
@@ -30,26 +29,24 @@ const connectedDesktopApps = new Map(); // userId -> socket
 const connectedWebClients = new Map(); // userId -> socket
 
 // تفعيل قاعدة البيانات
-console.log("✅ Database enabled - Server running with MongoDB Atlas");
-console.log("Attempting to connect to MongoDB...");
+console.log("✅ Database enabled - Server running with Supabase (PostgreSQL)");
 
-// متغير لحالة اتصال MongoDB
-let isMongoConnected = false;
+// متغير لحالة اتصال Supabase
+let isDbConnected = false;
 
 // دالة الاتصال بقاعدة البيانات
-const connectToMongoDB = async () => {
+const connectToDatabase = async () => {
   try {
-    console.log("🔗 Connecting to MongoDB Atlas...");
+    console.log("🔗 Connecting to Supabase...");
     await connectDB();
-    isMongoConnected = true;
-    console.log("✅ MongoDB Connected Successfully");
+    isDbConnected = true;
+    console.log("✅ Supabase Connected Successfully");
 
     // إنشاء مستخدم admin افتراضي
     await createDefaultAdmin();
   } catch (error) {
-    console.error("❌ MongoDB connection failed:", error.message);
-    console.error("📋 Error details:", error);
-    isMongoConnected = false;
+    console.error("❌ Supabase connection failed:", error.message);
+    isDbConnected = false;
 
     // Continue running server even if database connection fails
     console.log("⚠️ Server will continue running without database connection");
@@ -59,27 +56,28 @@ const connectToMongoDB = async () => {
 // إنشاء مستخدم admin افتراضي
 const createDefaultAdmin = async () => {
   try {
-    const User = require("./models/User");
-    const bcrypt = require("bcryptjs");
-
     console.log("👤 Checking for admin user...");
-    const adminExists = await User.findOne({ username: "admin" });
+    const { data: adminExists } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', 'admin')
+      .single();
+
     if (!adminExists) {
       console.log("👤 Creating admin user...");
       const hashedPassword = await bcrypt.hash("admin123", 12);
-      const admin = new User({
+      const { error } = await supabase.from('users').insert({
         username: "admin",
         email: "admin@company.com",
         password: hashedPassword,
         role: "admin",
-        name: "مدير النظام",
-        firstName: "مدير",
-        lastName: "النظام",
+        first_name: "مدير",
+        last_name: "النظام",
         department: "إدارة",
         position: "مدير عام",
-        approvalStatus: "approved",
+        status: "active",
       });
-      await admin.save();
+      if (error) throw error;
       console.log("✅ Default admin user created successfully");
     } else {
       console.log("✅ Admin user already exists");
@@ -152,11 +150,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // تشغيل الاتصال بقاعدة البيانات
-connectToMongoDB();
+connectToDatabase();
 
 // Middleware للتحقق من اتصال قاعدة البيانات
 app.use((req, res, next) => {
-  req.isMongoConnected = isMongoConnected;
+  req.isDbConnected = isDbConnected;
   next();
 });
 
@@ -186,6 +184,21 @@ app.use("/api/whatsapp", require("./routes/whatsapp"));
 app.use("/api/transactions", require("./routes/transactions"));
 app.use("/api/treasury", require("./routes/treasury"));
 app.use("/api/system-logs", require("./routes/systemLogs"));
+app.use("/api/dashboard", require("./routes/dashboard"));
+app.use("/api/company-settings", require("./routes/company-settings"));
+app.use("/api/projects", require("./routes/projects"));
+app.use("/api/invoices", require("./routes/invoices"));
+app.use("/api/tax", require("./routes/tax"));
+app.use("/api/exchange-rates", require("./routes/exchange-rates"));
+app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/losses", require("./routes/losses"));
+app.use("/api/assets-repairs", require("./routes/assets"));
+app.use("/api/roles", require("./routes/roles"));
+app.use("/api/departments", require("./routes/departments"));
+app.use("/api/reports", require("./routes/reports"));
+app.use("/api/deferred-revenue", require("./routes/deferred-revenue"));
+app.use("/api/wallets", require("./routes/wallets"));
+app.use("/api/payroll", require("./routes/payroll"));
 app.use("/api/employees", require("./routes/employees"));
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/upload", require("./routes/upload"));
@@ -198,20 +211,20 @@ console.log("✅ All routes loaded");
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
-    message: "HR System API is running with MongoDB Atlas",
-    database: isMongoConnected ? "Connected" : "Disconnected",
+    message: "HR System API is running with Supabase (PostgreSQL)",
+    database: isDbConnected ? "Connected" : "Disconnected",
     timestamp: new Date().toISOString(),
-    version: "2.8.0",
+    version: "3.0.0",
   });
 });
 
 // Basic endpoint
 app.get("/", (req, res) => {
   res.json({
-    message: "HR System API is running with MongoDB Atlas",
-    version: "2.8.0",
+    message: "HR System API is running with Supabase (PostgreSQL)",
+    version: "3.0.0",
     status: "active",
-    database: isMongoConnected ? "connected" : "disconnected",
+    database: isDbConnected ? "connected" : "disconnected",
   });
 });
 
@@ -342,23 +355,14 @@ server.listen(PORT, () => {
 });
 
 // معالجة إشارات الإغلاق
-process.on("SIGTERM", async () => {
+process.on("SIGTERM", () => {
   console.log("📴 SIGTERM received, shutting down gracefully");
-  if (isMongoConnected) {
-    console.log("🔒 إغلاق اتصال MongoDB Atlas...");
-    await mongoose.connection.close();
-  }
   process.exit(0);
 });
 
-process.on("SIGINT", async () => {
+process.on("SIGINT", () => {
   console.log("📴 SIGINT received, shutting down gracefully");
-  if (isMongoConnected) {
-    console.log("🔒 إغلاق اتصال MongoDB Atlas...");
-    await mongoose.connection.close();
-  }
   process.exit(0);
 });
 
 module.exports = app;
-

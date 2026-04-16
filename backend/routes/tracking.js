@@ -2,11 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
-const Employee = require('../models/Employee');
-const User = require('../models/User');
-const Tracking = require('../models/Tracking');
-const Setting = require('../models/Setting');
+const { supabase } = require('../config/database');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -20,20 +16,20 @@ const rateLimit = (maxRequests = 60, windowMs = 60000) => {
   return (req, res, next) => {
     const key = req.user ? req.user.id : req.ip;
     const now = Date.now();
-    
+
     if (!rateLimitMap.has(key)) {
       rateLimitMap.set(key, { count: 1, resetTime: now + windowMs });
       return next();
     }
-    
+
     const userLimit = rateLimitMap.get(key);
-    
+
     if (now > userLimit.resetTime) {
       userLimit.count = 1;
       userLimit.resetTime = now + windowMs;
       return next();
     }
-    
+
     if (userLimit.count >= maxRequests) {
       return res.status(429).json({
         success: false,
@@ -41,7 +37,7 @@ const rateLimit = (maxRequests = 60, windowMs = 60000) => {
         error: 'RATE_LIMIT_EXCEEDED'
       });
     }
-    
+
     userLimit.count++;
     next();
   };
@@ -67,15 +63,13 @@ const storage = multer.diskStorage({
 
 // تحسين multer مع validation أفضل
 const fileFilter = (req, file, cb) => {
-  // التحقق من نوع الملف
   const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
   if (!allowedTypes.includes(file.mimetype)) {
     const error = new Error('نوع الملف غير مدعوم. يُسمح فقط بـ PNG و JPEG');
     error.code = 'INVALID_FILE_TYPE';
     return cb(error, false);
   }
-  
-  // التحقق من امتداد الملف
+
   const allowedExtensions = ['.png', '.jpg', '.jpeg'];
   const fileExtension = path.extname(file.originalname).toLowerCase();
   if (!allowedExtensions.includes(fileExtension)) {
@@ -83,28 +77,28 @@ const fileFilter = (req, file, cb) => {
     error.code = 'INVALID_FILE_EXTENSION';
     return cb(error, false);
   }
-  
+
   cb(null, true);
 };
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB حد أقصى
-    files: 1 // ملف واحد فقط
+    files: 1
   }
 });
 
 // تحسين قواعد التحقق من صحة البيانات
 const validateWorkData = [
   body('workData').exists().withMessage('workData مطلوب'),
-  
+
   body('workData.totalSeconds')
     .isNumeric({ min: 0 })
     .withMessage('totalSeconds يجب أن يكون رقم أكبر من أو يساوي 0')
     .toInt(),
-  
+
   body('workData.activeSeconds')
     .isNumeric({ min: 0 })
     .withMessage('activeSeconds يجب أن يكون رقم أكبر من أو يساوي 0')
@@ -115,7 +109,7 @@ const validateWorkData = [
       }
       return true;
     }),
-  
+
   body('workData.idleSeconds')
     .isNumeric({ min: 0 })
     .withMessage('idleSeconds يجب أن يكون رقم أكبر من أو يساوي 0')
@@ -126,7 +120,7 @@ const validateWorkData = [
       }
       return true;
     }),
-  
+
   body('workData.breakSeconds')
     .optional()
     .isNumeric({ min: 0 })
@@ -140,7 +134,7 @@ const validateWorkData = [
       }
       return true;
     }),
-  
+
   body('workData.productivity')
     .optional()
     .isFloat({ min: 0, max: 100 })
@@ -150,13 +144,13 @@ const validateWorkData = [
       const { totalSeconds, activeSeconds } = req.body.workData;
       if (totalSeconds > 0) {
         const calculatedProductivity = Math.round((activeSeconds / totalSeconds) * 100);
-        if (Math.abs(value - calculatedProductivity) > 1) { // 1% margin of error
+        if (Math.abs(value - calculatedProductivity) > 1) {
           throw new Error('قيمة الإنتاجية غير متوافقة مع نسبة وقت النشاط إلى الوقت الإجمالي');
         }
       }
       return true;
     }),
-  
+
   body('workData.lastActivity')
     .optional()
     .isISO8601()
@@ -189,15 +183,12 @@ const validateScreenshot = [
   body('employeeId')
     .notEmpty()
     .withMessage('employeeId مطلوب')
-    .isMongoId()
-    .withMessage('employeeId يجب أن يكون MongoDB ObjectId صحيح')
 ];
 
 // دالة للتحقق من نتائج الـ validation
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    // تسجيل الأخطاء للمراقبة
     console.warn('❌ أخطاء validation:', errors.array());
     return res.status(400).json({
       success: false,
@@ -219,25 +210,23 @@ const logActivity = (action, userId, details = {}) => {
   });
 };
 
-// استخدام الـ Tracking model المُعرَّف في models/Tracking.js
-
 // Middleware للتحقق من التوكن
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ 
+    return res.status(401).json({
       success: false,
-      message: 'مطلوب توكن المصادقة' 
+      message: 'مطلوب توكن المصادقة'
     });
   }
 
   jwt.verify(token, process.env.JWT_SECRET || 'hr-system-2024-default-secret-change-in-production', (err, user) => {
     if (err) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        message: 'توكن غير صالح' 
+        message: 'توكن غير صالح'
       });
     }
     req.user = user;
@@ -249,82 +238,99 @@ function authenticateToken(req, res, next) {
 router.post('/desktop-login', rateLimit(5, 300000), validateLogin, handleValidationErrors, async (req, res) => {
   try {
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'يرجى إدخال اسم المستخدم وكلمة المرور' 
+        message: 'يرجى إدخال اسم المستخدم وكلمة المرور'
       });
     }
 
-    // أولاً: البحث في جدول المستخدمين (User) - نفس نظام الموقع
-    const user = await User.findOne({
-      $or: [
-        { username: username },
-        { email: username }
-      ]
-    });
+    // أولاً: البحث في جدول المستخدمين (User)
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .or(`username.eq.${username},email.eq.${username}`)
+      .maybeSingle();
+
+    if (userError) throw userError;
 
     if (user) {
       // التحقق من كلمة المرور
-      const isMatch = await user.comparePassword(password);
+      const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          message: 'بيانات دخول غير صحيحة' 
+          message: 'بيانات دخول غير صحيحة'
         });
       }
 
       // التحقق من حالة الموافقة للموظفين
       if (user.role === 'employee') {
         // البحث عن الموظف المرتبط
-        let employee = await Employee.findOne({ userId: user._id });
-        
+        let { data: employee, error: empError } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (empError) throw empError;
+
         // إذا لم يجد بواسطة userId، ابحث بواسطة البريد الإلكتروني
         if (!employee) {
-          employee = await Employee.findOne({ email: user.email });
+          const { data: emp2, error: emp2Error } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('email', user.email)
+            .maybeSingle();
+
+          if (!emp2Error) employee = emp2;
         }
-        
+
         if (!employee) {
-          console.log(`⚠️ لم يتم العثور على موظف للمستخدم: ${user.username} (${user._id})`);
-          return res.status(403).json({ 
+          console.log(`⚠️ لم يتم العثور على موظف للمستخدم: ${user.username} (${user.id})`);
+          return res.status(403).json({
             success: false,
-            message: 'لم يتم العثور على بيانات الموظف' 
+            message: 'لم يتم العثور على بيانات الموظف'
           });
         }
 
         // إذا تم العثور على الموظف بدون userId، قم بتحديثه
-        if (!employee.userId) {
-          employee.userId = user._id;
-          await employee.save();
+        if (!employee.user_id) {
+          await supabase
+            .from('employees')
+            .update({ user_id: user.id })
+            .eq('id', employee.id);
           console.log(`🔗 تم ربط الموظف ${employee.name} بالمستخدم ${user.username}`);
         }
 
-        console.log(`🔍 فحص حالة الموافقة للموظف: ${employee.name} - الحالة: ${employee.approvalStatus}`);
+        console.log(`🔍 فحص حالة الموافقة للموظف: ${employee.name} - الحالة: ${employee.approval_status}`);
 
-        if (employee.approvalStatus === 'pending') {
-          return res.status(403).json({ 
+        if (employee.approval_status === 'pending') {
+          return res.status(403).json({
             success: false,
-            message: 'حسابك قيد المراجعة من قبل الإدارة' 
+            message: 'حسابك قيد المراجعة من قبل الإدارة'
           });
         }
 
-        if (employee.approvalStatus === 'rejected') {
-          return res.status(403).json({ 
+        if (employee.approval_status === 'rejected') {
+          return res.status(403).json({
             success: false,
-            message: 'تم رفض طلب التسجيل الخاص بك' 
+            message: 'تم رفض طلب التسجيل الخاص بك'
           });
         }
       }
 
       // تحديث آخر تسجيل دخول
-      user.lastLogin = new Date();
-      await user.save();
+      await supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', user.id);
 
       // إنشاء JWT token
       const token = jwt.sign(
-        { 
-          id: user._id,
+        {
+          id: user.id,
           username: user.username,
           email: user.email,
           role: user.role,
@@ -338,48 +344,48 @@ router.post('/desktop-login', rateLimit(5, 300000), validateLogin, handleValidat
         success: true,
         token,
         user: {
-          id: user._id,
+          id: user.id,
           username: user.username,
           email: user.email,
           role: user.role,
-          firstName: user.firstName,
-          lastName: user.lastName,
+          firstName: user.first_name,
+          lastName: user.last_name,
           department: user.department,
           position: user.position
         }
       });
     }
 
-    // ثانياً: إذا لم يجد في جدول المستخدمين، ابحث في جدول الموظفين (للتوافق مع النظام القديم)
-    const employee = await Employee.findOne({
-      $or: [
-        { email: username },
-        { employeeNumber: username },
-        { name: username }
-      ]
-    });
+    // ثانياً: إذا لم يجد في جدول المستخدمين، ابحث في جدول الموظفين
+    const { data: employee, error: empSearchError } = await supabase
+      .from('employees')
+      .select('*')
+      .or(`email.eq.${username},employee_number.eq.${username},name.eq.${username}`)
+      .maybeSingle();
+
+    if (empSearchError) throw empSearchError;
 
     if (!employee) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'بيانات دخول غير صحيحة' 
+        message: 'بيانات دخول غير صحيحة'
       });
     }
 
     // التحقق من كلمة المرور (للموظفين القدامى نستخدم كلمة مرور افتراضية)
     const defaultPassword = '123456';
     if (password !== defaultPassword) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'بيانات دخول غير صحيحة' 
+        message: 'بيانات دخول غير صحيحة'
       });
     }
 
     // إنشاء JWT token
     const token = jwt.sign(
-      { 
-        id: employee._id,
-        employeeNumber: employee.employeeNumber,
+      {
+        id: employee.id,
+        employeeNumber: employee.employee_number,
         email: employee.email,
         name: employee.name,
         type: 'desktop-app'
@@ -392,8 +398,8 @@ router.post('/desktop-login', rateLimit(5, 300000), validateLogin, handleValidat
       success: true,
       token,
       employee: {
-        id: employee._id,
-        employeeNumber: employee.employeeNumber,
+        id: employee.id,
+        employeeNumber: employee.employee_number,
         name: employee.name,
         email: employee.email,
         department: employee.department,
@@ -404,65 +410,95 @@ router.post('/desktop-login', rateLimit(5, 300000), validateLogin, handleValidat
 
   } catch (error) {
     console.error('Desktop login error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'خطأ في الخادم', 
-      error: error.message 
+      message: 'خطأ في الخادم',
+      error: error.message
     });
   }
 });
 
-// تحديث بيانات التتبع مع معالجة Race Condition
+// تحديث بيانات التتبع (no longer uses mongoose sessions)
 router.post('/update', validateWorkData, handleValidationErrors, async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
   try {
     const { employeeId } = req.body;
     const workData = req.body.workData;
-    
-    // البحث عن السجل وتحديثه في نفس Transaction
-    const tracking = await Tracking.findOne({ employeeId }).session(session);
+
+    // البحث عن السجل وتحديثه
+    const { data: tracking, error: findError } = await supabase
+      .from('tracking')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .maybeSingle();
+
+    if (findError) throw findError;
+
     if (!tracking) {
       // إنشاء سجل جديد إذا لم يكن موجوداً
-      const newTracking = new Tracking({
-        employeeId,
-        workData,
-        version: 1
+      const { data: newTracking, error: insertError } = await supabase
+        .from('tracking')
+        .insert({
+          employee_id: employeeId,
+          total_seconds: workData.totalSeconds || 0,
+          active_seconds: workData.activeSeconds || 0,
+          idle_seconds: workData.idleSeconds || 0,
+          break_seconds: workData.breakSeconds || 0,
+          sessions_count: workData.sessionsCount || 0,
+          productivity: workData.productivity || 0,
+          last_activity: workData.lastActivity || new Date().toISOString(),
+          date: new Date().toISOString().split('T')[0],
+          date_string: new Date().toISOString().split('T')[0]
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      return res.json({
+        success: true,
+        message: 'تم تحديث بيانات التتبع بنجاح',
+        data: newTracking
       });
-      await newTracking.save({ session });
     } else {
-      // تحديث السجل الموجود مع زيادة رقم النسخة
-      tracking.workData = workData;
-      tracking.version = (tracking.version || 0) + 1;
-      tracking.lastUpdated = new Date();
-      await tracking.save({ session });
+      // تحديث السجل الموجود
+      const { data: updated, error: updateError } = await supabase
+        .from('tracking')
+        .update({
+          total_seconds: workData.totalSeconds || 0,
+          active_seconds: workData.activeSeconds || 0,
+          idle_seconds: workData.idleSeconds || 0,
+          break_seconds: workData.breakSeconds || 0,
+          sessions_count: workData.sessionsCount || 0,
+          productivity: workData.productivity || 0,
+          last_activity: workData.lastActivity || new Date().toISOString(),
+          last_update: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tracking.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      res.json({
+        success: true,
+        message: 'تم تحديث بيانات التتبع بنجاح',
+        data: updated
+      });
     }
 
-    await session.commitTransaction();
-    
-    res.json({
-      success: true,
-      message: 'تم تحديث بيانات التتبع بنجاح',
-      data: tracking
-    });
-
   } catch (error) {
-    await session.abortTransaction();
     console.error('خطأ في تحديث بيانات التتبع:', error);
     res.status(500).json({
       success: false,
       message: 'حدث خطأ أثناء تحديث بيانات التتبع',
       error: error.message
     });
-  } finally {
-    session.endSession();
   }
 });
 
 // رفع صورة الشاشة مع validation شامل
 router.post('/screenshot', authenticateToken, rateLimit(20, 60000), (req, res, next) => {
-  // استخدام multer مع error handling محسن
   upload.single('screenshot')(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -498,71 +534,72 @@ router.post('/screenshot', authenticateToken, rateLimit(20, 60000), (req, res, n
 
     const userId = req.user.id;
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
+    const todayString = today.toISOString().split('T')[0];
+
     const screenshotInfo = {
       filename: req.file.filename,
-      timestamp: new Date(),
-      path: req.file.path,
-      size: req.file.size
+      timestamp: new Date().toISOString(),
+      path: req.file.path
     };
 
-    // تحديد نوع المستخدم وإعداد معايير البحث
-    let searchCriteria = { date: { $gte: today, $lt: tomorrow } };
-    let userInfo = {};
+    // Determine user type and search criteria
     let userType = 'user';
+    let searchField = 'user_id';
 
-    // إذا كان المستخدم من النوع الجديد (User)
-    if (req.user.username || req.user.role) {
-      searchCriteria.userId = userId;
-      userInfo = {
-        username: req.user.username,
-        email: req.user.email,
-        name: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim(),
-        department: req.user.department,
-        position: req.user.position
-      };
-      userType = 'user';
-    } else {
-      // إذا كان من النوع القديم (Employee)
-      searchCriteria.employeeId = userId;
-      userInfo = {
-        email: req.user.email,
-        name: req.user.name,
-        department: req.user.department,
-        position: req.user.position
-      };
+    if (!(req.user.username || req.user.role)) {
       userType = 'employee';
+      searchField = 'employee_id';
     }
 
-    // إضافة مسار الصورة لسجل اليوم
-    let tracking = await Tracking.findOne(searchCriteria);
+    // Find today's tracking record
+    const { data: tracking, error: findError } = await supabase
+      .from('tracking')
+      .select('*')
+      .eq(searchField, userId)
+      .eq('date_string', todayString)
+      .maybeSingle();
+
+    if (findError) throw findError;
+
+    let trackingId;
 
     if (!tracking) {
-      const trackingData = {
-        screenshots: [screenshotInfo],
-        date: new Date(),
-        userType: userType,
-        userInfo: userInfo
+      // Create new tracking record
+      const insertData = {
+        date: todayString,
+        date_string: todayString,
+        last_update: new Date().toISOString()
       };
+      insertData[searchField] = userId;
 
-      // إضافة المعرف المناسب
-      if (userType === 'user') {
-        trackingData.userId = userId;
-      } else {
-        trackingData.employeeId = userId;
-      }
+      const { data: newTracking, error: insertError } = await supabase
+        .from('tracking')
+        .insert(insertData)
+        .select()
+        .single();
 
-      tracking = new Tracking(trackingData);
+      if (insertError) throw insertError;
+      trackingId = newTracking.id;
     } else {
-      tracking.screenshots.push(screenshotInfo);
-      tracking.lastUpdate = new Date();
-      tracking.userInfo = { ...tracking.userInfo, ...userInfo };
+      trackingId = tracking.id;
+      // Update last_update
+      await supabase
+        .from('tracking')
+        .update({ last_update: new Date().toISOString() })
+        .eq('id', trackingId);
     }
 
-    await tracking.save();
+    // Insert screenshot into tracking_screenshots table
+    const { error: ssError } = await supabase
+      .from('tracking_screenshots')
+      .insert({
+        tracking_id: trackingId,
+        filename: screenshotInfo.filename,
+        timestamp: screenshotInfo.timestamp,
+        path: screenshotInfo.path
+      });
+
+    if (ssError) throw ssError;
 
     // تسجيل العملية
     logActivity('SCREENSHOT_UPLOAD', userId, {
@@ -572,8 +609,8 @@ router.post('/screenshot', authenticateToken, rateLimit(20, 60000), (req, res, n
       ip: req.ip
     });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'تم رفع الصورة بنجاح',
       filename: screenshotInfo.filename,
       timestamp: screenshotInfo.timestamp
@@ -581,10 +618,10 @@ router.post('/screenshot', authenticateToken, rateLimit(20, 60000), (req, res, n
 
   } catch (error) {
     console.error('Screenshot upload error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'خطأ في رفع الصورة', 
-      error: error.message 
+      message: 'خطأ في رفع الصورة',
+      error: error.message
     });
   }
 });
@@ -596,113 +633,116 @@ router.get('/my-data', authenticateToken, async (req, res) => {
     const { startDate, endDate, limit = 30 } = req.query;
 
     // تحديد نوع المستخدم وإعداد معايير البحث
-    let searchCriteria = {};
-    
-    if (req.user.username || req.user.role) {
-      // مستخدم من النوع الجديد (User)
-      searchCriteria.userId = userId;
-    } else {
-      // مستخدم من النوع القديم (Employee)
-      searchCriteria.employeeId = userId;
+    let searchField = 'user_id';
+    if (!(req.user.username || req.user.role)) {
+      searchField = 'employee_id';
     }
 
-    // إضافة فلتر التاريخ إذا تم تحديده
-    if (startDate && endDate) {
-      searchCriteria.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
-    }
-
-    const trackingData = await Tracking.find(searchCriteria)
-      .populate('userId', 'username email firstName lastName department position')
-      .populate('employeeId', 'name employeeNumber email department position')
-      .sort({ date: -1 })
+    let query = supabase
+      .from('tracking')
+      .select('*')
+      .eq(searchField, userId)
+      .order('date', { ascending: false })
       .limit(parseInt(limit));
+
+    if (startDate && endDate) {
+      query = query.gte('date', startDate).lte('date', endDate);
+    }
+
+    const { data: trackingData, error } = await query;
+    if (error) throw error;
+
+    // Fetch screenshots for each tracking record
+    const trackingIds = (trackingData || []).map(t => t.id);
+    let screenshotsMap = {};
+    if (trackingIds.length > 0) {
+      const { data: screenshots } = await supabase
+        .from('tracking_screenshots')
+        .select('*')
+        .in('tracking_id', trackingIds);
+
+      (screenshots || []).forEach(ss => {
+        if (!screenshotsMap[ss.tracking_id]) screenshotsMap[ss.tracking_id] = [];
+        screenshotsMap[ss.tracking_id].push(ss);
+      });
+    }
 
     // حساب الإحصائيات
     const stats = {
-      totalDays: trackingData.length,
+      totalDays: (trackingData || []).length,
       totalWorkTime: 0,
       totalActiveTime: 0,
       totalScreenshots: 0,
       averageProductivity: 0
     };
 
-    trackingData.forEach(record => {
-      if (record.workData) {
-        stats.totalWorkTime += record.workData.totalSeconds || 0;
-        stats.totalActiveTime += record.workData.activeSeconds || 0;
-        stats.averageProductivity += record.workData.productivity || 0;
-      }
-      stats.totalScreenshots += record.screenshots ? record.screenshots.length : 0;
+    (trackingData || []).forEach(record => {
+      stats.totalWorkTime += record.total_seconds || 0;
+      stats.totalActiveTime += record.active_seconds || 0;
+      stats.averageProductivity += record.productivity || 0;
+      stats.totalScreenshots += (screenshotsMap[record.id] || []).length;
     });
 
-    if (trackingData.length > 0) {
+    if ((trackingData || []).length > 0) {
       stats.averageProductivity = Math.round(stats.averageProductivity / trackingData.length);
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: trackingData,
       stats: stats,
-      count: trackingData.length
+      count: (trackingData || []).length
     });
 
   } catch (error) {
     console.error('Get user data error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'خطأ في جلب البيانات', 
-      error: error.message 
+      message: 'خطأ في جلب البيانات',
+      error: error.message
     });
   }
 });
 
 // استرجاع بيانات اليوم
 router.get('/today', authenticateToken, async (req, res) => {
-    try {
-        const userId = req.user.id || req.user._id;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        // البحث عن سجل اليوم
-        const tracking = await Tracking.findOne({
-            $or: [
-                { userId: userId },
-                { employeeId: userId }
-            ],
-            date: {
-                $gte: today,
-                $lt: tomorrow
-            }
-        });
-        
-        if (!tracking) {
-            return res.json({
-                success: true,
-                message: 'لا توجد بيانات لليوم الحالي',
-                data: null
-            });
-        }
-        
-        res.json({
-            success: true,
-            message: 'تم استرجاع بيانات اليوم بنجاح',
-            data: tracking
-        });
-        
-    } catch (error) {
-        console.error('Error fetching today data:', error);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في استرجاع البيانات',
-            error: error.message
-        });
+  try {
+    const userId = req.user.id;
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+
+    // البحث عن سجل اليوم
+    const { data: tracking, error } = await supabase
+      .from('tracking')
+      .select('*')
+      .or(`user_id.eq.${userId},employee_id.eq.${userId}`)
+      .eq('date_string', todayString)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!tracking) {
+      return res.json({
+        success: true,
+        message: 'لا توجد بيانات لليوم الحالي',
+        data: null
+      });
     }
+
+    res.json({
+      success: true,
+      message: 'تم استرجاع بيانات اليوم بنجاح',
+      data: tracking
+    });
+
+  } catch (error) {
+    console.error('Error fetching today data:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطأ في استرجاع البيانات',
+      error: error.message
+    });
+  }
 });
 
 // جلب بيانات موظف محدد (للإدارة)
@@ -711,7 +751,7 @@ router.get('/employee/:id', authenticateToken, async (req, res) => {
     const employeeId = req.params.id;
     const { startDate, endDate } = req.query;
 
-    // التحقق من الصلاحيات - الموظف يمكنه رؤية بياناته فقط أو الإدارة
+    // التحقق من الصلاحيات
     if (req.user.id !== employeeId && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -719,38 +759,32 @@ router.get('/employee/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    const dateFilter = { 
-      $or: [
-        { employeeId: employeeId },
-        { userId: employeeId }
-      ]
-    };
-    
-    if (startDate && endDate) {
-      dateFilter.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
-    }
-
-    const trackingData = await Tracking.find(dateFilter)
-      .populate('userId', 'username email firstName lastName department position')
-      .populate('employeeId', 'name employeeNumber email department position')
-      .sort({ date: -1 })
+    let query = supabase
+      .from('tracking')
+      .select('*')
+      .or(`employee_id.eq.${employeeId},user_id.eq.${employeeId}`)
+      .order('date', { ascending: false })
       .limit(30);
 
-    res.json({ 
-      success: true, 
+    if (startDate && endDate) {
+      query = query.gte('date', startDate).lte('date', endDate);
+    }
+
+    const { data: trackingData, error } = await query;
+    if (error) throw error;
+
+    res.json({
+      success: true,
       data: trackingData,
-      count: trackingData.length
+      count: (trackingData || []).length
     });
 
   } catch (error) {
     console.error('Get employee data error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'خطأ في جلب البيانات', 
-      error: error.message 
+      message: 'خطأ في جلب البيانات',
+      error: error.message
     });
   }
 });
@@ -761,7 +795,6 @@ router.get('/screenshot/:filename', authenticateToken, (req, res) => {
     const filename = req.params.filename;
     const filePath = path.join(uploadsDir, filename);
 
-    // التحقق من وجود الملف
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
         success: false,
@@ -769,7 +802,6 @@ router.get('/screenshot/:filename', authenticateToken, (req, res) => {
       });
     }
 
-    // إرسال الملف
     res.sendFile(filePath);
 
   } catch (error) {
@@ -787,9 +819,6 @@ router.post('/heartbeat', authenticateToken, async (req, res) => {
   try {
     const employeeId = req.user.id;
     const { status, lastActivity } = req.body;
-
-    // يمكن إضافة logic لتحديث آخر نشاط للموظف
-    // أو حفظ حالة الاتصال في قاعدة البيانات
 
     res.json({
       success: true,
@@ -810,7 +839,7 @@ router.post('/heartbeat', authenticateToken, async (req, res) => {
 // حفظ بيانات تتبع الوقت المتقدمة
 router.post('/data', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.id;
     const { workData, screenshots, isWorking, date, timestamp } = req.body;
 
     console.log('💾 حفظ بيانات التتبع المتقدمة:', {
@@ -822,82 +851,119 @@ router.post('/data', authenticateToken, async (req, res) => {
       timestamp
     });
 
-    // العثور على أو إنشاء سجل اليوم
-    const today = new Date(date);
-    today.setHours(0, 0, 0, 0);
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayDate = new Date(date);
+    const todayString = todayDate.toISOString().split('T')[0];
 
-    let tracking = await Tracking.findOne({
-      $or: [
-        { userId: userId },
-        { employeeId: userId }
-      ],
-      date: {
-        $gte: today,
-        $lt: tomorrow
-      }
-    });
+    // Find today's tracking record
+    const { data: tracking, error: findError } = await supabase
+      .from('tracking')
+      .select('*')
+      .or(`user_id.eq.${userId},employee_id.eq.${userId}`)
+      .eq('date_string', todayString)
+      .maybeSingle();
+
+    if (findError) throw findError;
+
+    let trackingRecord;
 
     if (!tracking) {
       // إنشاء سجل جديد
-      tracking = new Tracking({
-        userId: userId,
-        employeeId: userId,
-        date: new Date(date),
-        workData: {
-          totalSeconds: workData.totalSeconds || 0,
-          activeSeconds: workData.activeSeconds || 0,
-          idleSeconds: workData.idleSeconds || 0,
-          breakSeconds: workData.breakSeconds || 0,
-          sessionsCount: workData.sessionsCount || 0,
+      const { data: newTracking, error: insertError } = await supabase
+        .from('tracking')
+        .insert({
+          user_id: userId,
+          employee_id: userId,
+          date: todayString,
+          date_string: todayString,
+          total_seconds: workData.totalSeconds || 0,
+          active_seconds: workData.activeSeconds || 0,
+          idle_seconds: workData.idleSeconds || 0,
+          break_seconds: workData.breakSeconds || 0,
+          sessions_count: workData.sessionsCount || 0,
           productivity: workData.productivity || 0,
-          lastActivity: new Date(workData.lastActivity || timestamp)
-        },
-        screenshots: screenshots || [],
-        status: isWorking ? 'working' : 'idle',
-        lastUpdate: new Date(timestamp)
-      });
+          last_activity: workData.lastActivity || timestamp,
+          status: isWorking ? 'working' : 'idle',
+          is_working: isWorking,
+          last_update: timestamp
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      trackingRecord = newTracking;
     } else {
       // تحديث السجل الموجود
-      tracking.workData = {
-        totalSeconds: workData.totalSeconds || 0,
-        activeSeconds: workData.activeSeconds || 0,
-        idleSeconds: workData.idleSeconds || 0,
-        breakSeconds: workData.breakSeconds || 0,
-        sessionsCount: workData.sessionsCount || 0,
-        productivity: workData.productivity || 0,
-        lastActivity: new Date(workData.lastActivity || timestamp)
-      };
-      
-      // دمج لقطات الشاشة الجديدة
-      if (screenshots && screenshots.length > 0) {
-        tracking.screenshots = tracking.screenshots || [];
-        screenshots.forEach(newScreenshot => {
-          const exists = tracking.screenshots.some(existing => 
-            existing.timestamp === newScreenshot.timestamp
-          );
-          if (!exists) {
-            tracking.screenshots.push(newScreenshot);
-          }
-        });
-      }
-      
-      tracking.status = isWorking ? 'working' : 'idle';
-      tracking.lastUpdate = new Date(timestamp);
+      const { data: updated, error: updateError } = await supabase
+        .from('tracking')
+        .update({
+          total_seconds: workData.totalSeconds || 0,
+          active_seconds: workData.activeSeconds || 0,
+          idle_seconds: workData.idleSeconds || 0,
+          break_seconds: workData.breakSeconds || 0,
+          sessions_count: workData.sessionsCount || 0,
+          productivity: workData.productivity || 0,
+          last_activity: workData.lastActivity || timestamp,
+          status: isWorking ? 'working' : 'idle',
+          is_working: isWorking,
+          last_update: timestamp,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tracking.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      trackingRecord = updated;
     }
 
-    await tracking.save();
+    // Handle screenshots - insert into tracking_screenshots table
+    if (screenshots && screenshots.length > 0) {
+      // Get existing screenshots to avoid duplicates
+      const { data: existingScreenshots } = await supabase
+        .from('tracking_screenshots')
+        .select('timestamp')
+        .eq('tracking_id', trackingRecord.id);
+
+      const existingTimestamps = (existingScreenshots || []).map(s => s.timestamp);
+
+      const newScreenshots = screenshots
+        .filter(ss => !existingTimestamps.includes(ss.timestamp))
+        .map(ss => ({
+          tracking_id: trackingRecord.id,
+          filename: ss.filename,
+          timestamp: ss.timestamp,
+          width: ss.width || null,
+          height: ss.height || null,
+          path: ss.path || null
+        }));
+
+      if (newScreenshots.length > 0) {
+        await supabase.from('tracking_screenshots').insert(newScreenshots);
+      }
+    }
+
+    // Get screenshot count
+    const { count: screenshotCount } = await supabase
+      .from('tracking_screenshots')
+      .select('*', { count: 'exact', head: true })
+      .eq('tracking_id', trackingRecord.id);
 
     res.json({
       success: true,
       message: 'تم حفظ البيانات المتقدمة بنجاح',
       data: {
-        workData: tracking.workData,
-        screenshotCount: tracking.screenshots ? tracking.screenshots.length : 0,
-        isWorking: tracking.status === 'working',
-        lastUpdate: tracking.lastUpdate
+        workData: {
+          totalSeconds: trackingRecord.total_seconds,
+          activeSeconds: trackingRecord.active_seconds,
+          idleSeconds: trackingRecord.idle_seconds,
+          breakSeconds: trackingRecord.break_seconds,
+          sessionsCount: trackingRecord.sessions_count,
+          productivity: trackingRecord.productivity,
+          lastActivity: trackingRecord.last_activity
+        },
+        screenshotCount: screenshotCount || 0,
+        isWorking: trackingRecord.status === 'working',
+        lastUpdate: trackingRecord.last_update
       }
     });
 
@@ -918,12 +984,11 @@ const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
       return await operation();
     } catch (error) {
       console.log(`❌ المحاولة ${attempt} فشلت:`, error.message);
-      
+
       if (attempt === maxRetries) {
         throw error;
       }
-      
-      // انتظار قبل إعادة المحاولة
+
       await new Promise(resolve => setTimeout(resolve, delay * attempt));
     }
   }
@@ -932,40 +997,40 @@ const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
 // حفظ بيانات تتبع الوقت - يدعم البيانات البسيطة والمتقدمة
 router.post('/save', async (req, res) => {
   try {
-    // استخراج userId من التوكن إذا كان موجوداً، أو استخدام قيمة افتراضية
+    // استخراج userId من التوكن إذا كان موجوداً
     let userId;
     if (req.headers.authorization) {
       try {
         const token = req.headers.authorization.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hr-system-2024-default-secret-change-in-production');
-        userId = decoded.id || decoded._id;
+        userId = decoded.id;
       } catch (error) {
         console.log('⚠️ خطأ في فك تشفير التوكن، استخدام مستخدم افتراضي');
-        userId = '684d388390512f7f24e4744c'; // admin user ID
+        userId = null;
       }
-    } else {
-      userId = '684d388390512f7f24e4744c'; // admin user ID افتراضي
     }
-    
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'مطلوب توكن المصادقة'
+      });
+    }
+
     // التحقق من نوع البيانات المرسلة
     let workData, screenshots, isWorking, date, timestamp;
-    
+
     if (req.body.workData) {
-      // بيانات متقدمة
       ({ workData, screenshots, isWorking, date, timestamp } = req.body);
       console.log('💾 حفظ بيانات التتبع المتقدمة:', {
-        userId,
-        workData,
+        userId, workData,
         screenshotCount: screenshots ? screenshots.length : 0,
-        isWorking,
-        date,
-        timestamp
+        isWorking, date, timestamp
       });
     } else {
-      // بيانات بسيطة للتوافق مع النسخة القديمة
       const { totalSeconds } = req.body;
       ({ isWorking, date, timestamp } = req.body);
-      
+
       workData = {
         totalSeconds: totalSeconds || 0,
         activeSeconds: Math.floor((totalSeconds || 0) * 0.9),
@@ -974,92 +1039,130 @@ router.post('/save', async (req, res) => {
         lastActivity: timestamp
       };
       screenshots = [];
-      
+
       console.log('💾 حفظ بيانات التتبع البسيطة:', {
-        userId,
-        totalSeconds,
-        isWorking,
-        date,
-        timestamp
+        userId, totalSeconds, isWorking, date, timestamp
       });
     }
 
-    // العثور على أو إنشاء سجل اليوم
     const dateString = req.body.dateString || new Date(date).toISOString().split('T')[0];
 
+    // Find existing tracking record
     let tracking = await retryOperation(async () => {
-      return await Tracking.findOne({
-        $or: [
-          { userId: userId },
-          { employeeId: userId }
-        ],
-        dateString: dateString
-      });
+      const { data, error } = await supabase
+        .from('tracking')
+        .select('*')
+        .or(`user_id.eq.${userId},employee_id.eq.${userId}`)
+        .eq('date_string', dateString)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
     });
+
+    let trackingRecord;
 
     if (!tracking) {
       // إنشاء سجل جديد
-      tracking = new Tracking({
-        userId: userId,
-        employeeId: userId,
-        date: new Date(date),
-        dateString: dateString,
-        workData: {
-          totalSeconds: workData.totalSeconds || 0,
-          activeSeconds: workData.activeSeconds || 0,
-          idleSeconds: workData.idleSeconds || 0,
-          breakSeconds: workData.breakSeconds || 0,
-          sessionsCount: workData.sessionsCount || 0,
-          productivity: workData.productivity || 0,
-          lastActivity: new Date(workData.lastActivity || timestamp)
-        },
-        screenshots: screenshots || [],
-        status: isWorking ? 'working' : 'idle',
-        isWorking: isWorking, // إضافة حفظ حالة isWorking
-        lastUpdate: new Date(timestamp)
+      const { data: newTracking, error: insertError } = await retryOperation(async () => {
+        return await supabase
+          .from('tracking')
+          .insert({
+            user_id: userId,
+            employee_id: userId,
+            date: dateString,
+            date_string: dateString,
+            total_seconds: workData.totalSeconds || 0,
+            active_seconds: workData.activeSeconds || 0,
+            idle_seconds: workData.idleSeconds || 0,
+            break_seconds: workData.breakSeconds || 0,
+            sessions_count: workData.sessionsCount || 0,
+            productivity: workData.productivity || 0,
+            last_activity: workData.lastActivity || timestamp,
+            status: isWorking ? 'working' : 'idle',
+            is_working: isWorking,
+            last_update: timestamp
+          })
+          .select()
+          .single();
       });
+
+      if (insertError) throw insertError;
+      trackingRecord = newTracking;
     } else {
       // تحديث السجل الموجود
-      tracking.workData = {
-        totalSeconds: workData.totalSeconds || 0,
-        activeSeconds: workData.activeSeconds || 0,
-        idleSeconds: workData.idleSeconds || 0,
-        breakSeconds: workData.breakSeconds || 0,
-        sessionsCount: workData.sessionsCount || 0,
-        productivity: workData.productivity || 0,
-        lastActivity: new Date(workData.lastActivity || timestamp)
-      };
-      
-      // دمج لقطات الشاشة الجديدة
-      if (screenshots && screenshots.length > 0) {
-        tracking.screenshots = tracking.screenshots || [];
-        screenshots.forEach(newScreenshot => {
-          const exists = tracking.screenshots.some(existing => 
-            existing.timestamp === newScreenshot.timestamp
-          );
-          if (!exists) {
-            tracking.screenshots.push(newScreenshot);
-          }
-        });
-      }
-      
-      tracking.status = isWorking ? 'working' : 'idle';
-      tracking.isWorking = isWorking; // إضافة حفظ حالة isWorking
-      tracking.lastUpdate = new Date(timestamp);
+      const { data: updated, error: updateError } = await retryOperation(async () => {
+        return await supabase
+          .from('tracking')
+          .update({
+            total_seconds: workData.totalSeconds || 0,
+            active_seconds: workData.activeSeconds || 0,
+            idle_seconds: workData.idleSeconds || 0,
+            break_seconds: workData.breakSeconds || 0,
+            sessions_count: workData.sessionsCount || 0,
+            productivity: workData.productivity || 0,
+            last_activity: workData.lastActivity || timestamp,
+            status: isWorking ? 'working' : 'idle',
+            is_working: isWorking,
+            last_update: timestamp,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', tracking.id)
+          .select()
+          .single();
+      });
+
+      if (updateError) throw updateError;
+      trackingRecord = updated;
     }
 
-    await retryOperation(async () => {
-      return await tracking.save();
-    });
+    // Handle screenshots
+    if (screenshots && screenshots.length > 0 && trackingRecord) {
+      const { data: existingScreenshots } = await supabase
+        .from('tracking_screenshots')
+        .select('timestamp')
+        .eq('tracking_id', trackingRecord.id);
+
+      const existingTimestamps = (existingScreenshots || []).map(s => s.timestamp);
+
+      const newScreenshots = screenshots
+        .filter(ss => !existingTimestamps.includes(ss.timestamp))
+        .map(ss => ({
+          tracking_id: trackingRecord.id,
+          filename: ss.filename,
+          timestamp: ss.timestamp,
+          width: ss.width || null,
+          height: ss.height || null,
+          path: ss.path || null
+        }));
+
+      if (newScreenshots.length > 0) {
+        await supabase.from('tracking_screenshots').insert(newScreenshots);
+      }
+    }
+
+    // Get screenshot count
+    const { count: screenshotCount } = await supabase
+      .from('tracking_screenshots')
+      .select('*', { count: 'exact', head: true })
+      .eq('tracking_id', trackingRecord.id);
 
     res.json({
       success: true,
       message: 'تم حفظ البيانات بنجاح',
       data: {
-        workData: tracking.workData,
-        screenshotCount: tracking.screenshots ? tracking.screenshots.length : 0,
-        isWorking: tracking.status === 'working',
-        lastUpdate: tracking.lastUpdate
+        workData: {
+          totalSeconds: trackingRecord.total_seconds,
+          activeSeconds: trackingRecord.active_seconds,
+          idleSeconds: trackingRecord.idle_seconds,
+          breakSeconds: trackingRecord.break_seconds,
+          sessionsCount: trackingRecord.sessions_count,
+          productivity: trackingRecord.productivity,
+          lastActivity: trackingRecord.last_activity
+        },
+        screenshotCount: screenshotCount || 0,
+        isWorking: trackingRecord.status === 'working',
+        lastUpdate: trackingRecord.last_update
       }
     });
 
@@ -1082,16 +1185,21 @@ router.get('/date/:dateString', async (req, res) => {
       try {
         const token = req.headers.authorization.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hr-system-2024-default-secret-change-in-production');
-        userId = decoded.id || decoded._id;
+        userId = decoded.id;
       } catch (error) {
-        userId = '684d388390512f7f24e4744c'; // admin user ID افتراضي
+        userId = null;
       }
-    } else {
-      userId = '684d388390512f7f24e4744c'; // admin user ID افتراضي
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'مطلوب توكن المصادقة'
+      });
     }
 
     const { dateString } = req.params;
-    
+
     // التحقق من صحة التاريخ
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
       return res.status(400).json({
@@ -1101,13 +1209,15 @@ router.get('/date/:dateString', async (req, res) => {
     }
 
     const tracking = await retryOperation(async () => {
-      return await Tracking.findOne({
-        $or: [
-          { userId: userId },
-          { employeeId: userId }
-        ],
-        dateString: dateString
-      });
+      const { data, error } = await supabase
+        .from('tracking')
+        .select('*')
+        .or(`user_id.eq.${userId},employee_id.eq.${userId}`)
+        .eq('date_string', dateString)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
     });
 
     if (!tracking) {
@@ -1130,15 +1240,28 @@ router.get('/date/:dateString', async (req, res) => {
       });
     }
 
+    // Get screenshot count
+    const { count: screenshotCount } = await supabase
+      .from('tracking_screenshots')
+      .select('*', { count: 'exact', head: true })
+      .eq('tracking_id', tracking.id);
+
     res.json({
       success: true,
       message: 'تم جلب البيانات بنجاح',
       data: {
-        workData: tracking.workData,
-        screenshotCount: tracking.screenshots ? tracking.screenshots.length : 0,
+        workData: {
+          totalSeconds: tracking.total_seconds || 0,
+          activeSeconds: tracking.active_seconds || 0,
+          idleSeconds: tracking.idle_seconds || 0,
+          breakSeconds: tracking.break_seconds || 0,
+          sessionsCount: tracking.sessions_count || 0,
+          productivity: tracking.productivity || 0
+        },
+        screenshotCount: screenshotCount || 0,
         isWorking: tracking.status === 'working',
-        date: tracking.dateString,
-        lastUpdate: tracking.lastUpdate
+        date: tracking.date_string,
+        lastUpdate: tracking.last_update
       }
     });
 
@@ -1152,53 +1275,79 @@ router.get('/date/:dateString', async (req, res) => {
   }
 });
 
+// Helper to get holiday settings
+async function getHolidaySettings() {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('*')
+    .eq('id', 'official_holidays')
+    .maybeSingle();
+
+  if (error || !data) return { weekends: [5, 6], holidays: [], customDays: [] };
+  return data.settings || { weekends: [5, 6], holidays: [], customDays: [] };
+}
+
 // جلب بيانات السجلات اليومية للأسبوعين الماضيين
 router.get('/daily-records/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     console.log('🔍 Daily records request for userId:', userId);
-    
-    // حساب تاريخ الأسبوعين الماضيين
+
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 14); // آخر 14 يوم
-    
-    console.log('📅 Searching for data between:', startDate.toISOString().split('T')[0], 'and', endDate.toISOString().split('T')[0]);
-    
-    // جلب بيانات التتبع للأسبوعين الماضيين
-    const trackingData = await Tracking.find({
-      $or: [
-        { userId: userId },
-        { employeeId: userId }
-      ],
-      date: {
-        $gte: startDate,
-        $lte: endDate
-      }
-    }).sort({ date: 1 });
+    startDate.setDate(endDate.getDate() - 14);
 
-    console.log('📊 Found tracking records:', trackingData.length);
+    const startDateString = startDate.toISOString().split('T')[0];
+    const endDateString = endDate.toISOString().split('T')[0];
+
+    console.log('📅 Searching for data between:', startDateString, 'and', endDateString);
+
+    // جلب بيانات التتبع للأسبوعين الماضيين
+    const { data: trackingData, error } = await supabase
+      .from('tracking')
+      .select('*')
+      .or(`user_id.eq.${userId},employee_id.eq.${userId}`)
+      .gte('date', startDateString)
+      .lte('date', endDateString)
+      .order('date', { ascending: true });
+
+    if (error) throw error;
+
+    console.log('📊 Found tracking records:', (trackingData || []).length);
+
+    // Get screenshot counts
+    const trackingIds = (trackingData || []).map(t => t.id);
+    let screenshotsMap = {};
+    if (trackingIds.length > 0) {
+      const { data: screenshots } = await supabase
+        .from('tracking_screenshots')
+        .select('tracking_id')
+        .in('tracking_id', trackingIds);
+
+      (screenshots || []).forEach(ss => {
+        screenshotsMap[ss.tracking_id] = (screenshotsMap[ss.tracking_id] || 0) + 1;
+      });
+    }
 
     // إنشاء سجل للأيام الـ 14 الماضية
     const dailyRecords = [];
-    
+
     for (let i = 0; i < 14; i++) {
       const currentDate = new Date(endDate);
       currentDate.setDate(endDate.getDate() - (13 - i));
-      
+
       const dateString = currentDate.toISOString().split('T')[0];
-      // فحص العطلة الأسبوعية بناءً على الإعدادات
-      const holidaySettings = await Setting.findOne({ id: 'official_holidays' });
-      const weekends = holidaySettings?.settings?.weekends || [5, 6]; // الجمعة والسبت افتراضياً
+      const holidaySettings = await getHolidaySettings();
+      const weekends = holidaySettings?.weekends || [5, 6];
       const isWeekend = weekends.includes(currentDate.getDay());
-      
+
       // البحث عن بيانات هذا اليوم
-      const dayData = trackingData.find(record => {
-        const recordDate = new Date(record.date).toISOString().split('T')[0];
+      const dayData = (trackingData || []).find(record => {
+        const recordDate = typeof record.date === 'string' ? record.date : new Date(record.date).toISOString().split('T')[0];
         return recordDate === dateString;
       });
-      
+
       let dailyRecord = {
         date: dateString,
         day: currentDate.toLocaleDateString('ar', { weekday: 'long' }),
@@ -1218,28 +1367,32 @@ router.get('/daily-records/:userId', async (req, res) => {
         status: isWeekend ? 'عطلة' : 'غائب',
         screenshots: 0
       };
-      
-      if (dayData && dayData.workData) {
-        const workData = dayData.workData;
+
+      if (dayData) {
+        const totalSeconds = dayData.total_seconds || 0;
+        const activeSeconds = dayData.active_seconds || 0;
+        const idleSeconds = dayData.idle_seconds || 0;
+        const breakSeconds = dayData.break_seconds || 0;
+
         dailyRecord = {
           ...dailyRecord,
           hasRealData: true,
-          totalHours: Math.round((workData.totalSeconds / 3600) * 10) / 10,
-          activeHours: Math.round((workData.activeSeconds / 3600) * 10) / 10,
-          idleHours: Math.round((workData.idleSeconds / 3600) * 10) / 10,
-          breakHours: Math.round((workData.breakSeconds / 3600) * 10) / 10,
-          productivity: workData.productivity || 0,
-          screenshots: dayData.screenshots ? dayData.screenshots.length : 0,
-          status: workData.totalSeconds >= 6 * 3600 ? 'حاضر' : 
-                   workData.totalSeconds > 0 ? 'متأخر' : 'غائب'
+          totalHours: Math.round((totalSeconds / 3600) * 10) / 10,
+          activeHours: Math.round((activeSeconds / 3600) * 10) / 10,
+          idleHours: Math.round((idleSeconds / 3600) * 10) / 10,
+          breakHours: Math.round((breakSeconds / 3600) * 10) / 10,
+          productivity: dayData.productivity || 0,
+          screenshots: screenshotsMap[dayData.id] || 0,
+          status: totalSeconds >= 6 * 3600 ? 'حاضر' :
+                   totalSeconds > 0 ? 'متأخر' : 'غائب'
         };
       }
-      
+
       dailyRecords.push(dailyRecord);
     }
-    
+
     console.log('📋 Generated daily records:', dailyRecords.length);
-    
+
     res.json({
       success: true,
       data: {
@@ -1258,61 +1411,59 @@ router.get('/daily-records/:userId', async (req, res) => {
   }
 });
 
-// جلب بيانات السجلات الشهرية للمستخدم (للاستخدام في جدول التأخيرات)
+// جلب بيانات السجلات الشهرية للمستخدم
 router.get('/user/:userId/records', async (req, res) => {
   try {
     const { userId } = req.params;
     const { year, month } = req.query;
-    
+
     console.log('🔍 Monthly records request for userId:', userId, 'year:', year, 'month:', month);
-    
+
     if (!year || !month) {
       return res.status(400).json({
         success: false,
         message: 'year و month مطلوبان'
       });
     }
-    
-    // حساب تواريخ بداية ونهاية الشهر
-    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1); // أول يوم في الشهر
-    const endDate = new Date(parseInt(year), parseInt(month), 0); // آخر يوم في الشهر
-    
-    console.log('📅 Searching for data between:', startDate.toISOString().split('T')[0], 'and', endDate.toISOString().split('T')[0]);
-    
-    // جلب بيانات التتبع للشهر المحدد
-    const trackingData = await Tracking.find({
-      $or: [
-        { userId: userId },
-        { employeeId: userId }
-      ],
-      date: {
-        $gte: startDate,
-        $lte: endDate
-      }
-    }).sort({ date: 1 });
 
-    console.log('📊 Found tracking records:', trackingData.length);
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+
+    console.log('📅 Searching for data between:', startDate, 'and', endDate);
+
+    // جلب بيانات التتبع للشهر المحدد
+    const { data: trackingData, error } = await supabase
+      .from('tracking')
+      .select('*')
+      .or(`user_id.eq.${userId},employee_id.eq.${userId}`)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: true });
+
+    if (error) throw error;
+
+    console.log('📊 Found tracking records:', (trackingData || []).length);
 
     // إنشاء سجل لجميع أيام الشهر
     const monthlyRecords = [];
-    const daysInMonth = endDate.getDate();
-    
+    const daysInMonth = lastDay;
+
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(parseInt(year), parseInt(month) - 1, day);
       const dateString = currentDate.toISOString().split('T')[0];
-      // فحص العطلة الأسبوعية بناءً على الإعدادات
-      const holidaySettings = await Setting.findOne({ id: 'official_holidays' });
-      const weekends = holidaySettings?.settings?.weekends || [5, 6]; // الجمعة والسبت افتراضياً
+      const holidaySettings = await getHolidaySettings();
+      const weekends = holidaySettings?.weekends || [5, 6];
       const isWeekend = weekends.includes(currentDate.getDay());
-      
+
       // البحث عن بيانات هذا اليوم
-      const dayData = trackingData.find(record => {
-        const recordDate = new Date(record.date).toISOString().split('T')[0];
+      const dayData = (trackingData || []).find(record => {
+        const recordDate = typeof record.date === 'string' ? record.date : new Date(record.date).toISOString().split('T')[0];
         return recordDate === dateString;
       });
-      
+
       let dailyRecord = {
-        _id: dayData?._id || `${dateString}_${userId}`,
+        id: dayData?.id || `${dateString}_${userId}`,
         date: dateString,
         userId: userId,
         totalSeconds: 0,
@@ -1321,31 +1472,30 @@ router.get('/user/:userId/records', async (req, res) => {
         productivity: 0,
         isWeekend: isWeekend
       };
-      
-      if (dayData && dayData.workData) {
-        const workData = dayData.workData;
+
+      if (dayData) {
         dailyRecord = {
           ...dailyRecord,
-          totalSeconds: workData.totalSeconds || 0,
-          activeSeconds: workData.activeSeconds || 0,
-          idleSeconds: workData.idleSeconds || 0,
-          productivity: workData.productivity || 0
+          totalSeconds: dayData.total_seconds || 0,
+          activeSeconds: dayData.active_seconds || 0,
+          idleSeconds: dayData.idle_seconds || 0,
+          productivity: dayData.productivity || 0
         };
       }
-      
+
       monthlyRecords.push(dailyRecord);
     }
-    
+
     console.log('📋 Generated monthly records:', monthlyRecords.length);
-    
+
     // حساب الإحصائيات
     const workingDays = monthlyRecords.filter(day => !day.isWeekend);
     const presentDays = workingDays.filter(day => day.totalSeconds > 0);
     const totalWorkTime = monthlyRecords.reduce((sum, day) => sum + (day.totalSeconds || 0), 0);
     const totalActiveTime = monthlyRecords.reduce((sum, day) => sum + (day.activeSeconds || 0), 0);
-    const averageProductivity = presentDays.length > 0 ? 
+    const averageProductivity = presentDays.length > 0 ?
       presentDays.reduce((sum, day) => sum + (day.productivity || 0), 0) / presentDays.length : 0;
-    
+
     const stats = {
       totalWorkingDays: workingDays.length,
       presentDays: presentDays.length,
@@ -1354,7 +1504,7 @@ router.get('/user/:userId/records', async (req, res) => {
       totalActiveTime: totalActiveTime,
       averageProductivity: Math.round(averageProductivity)
     };
-    
+
     res.json({
       success: true,
       data: {
@@ -1377,17 +1527,18 @@ router.get('/user/:userId/records', async (req, res) => {
 // تحديث دالة حساب الإحصائيات لاستخدام UTC
 async function calculateDailyStats(userId, date) {
   try {
-    // استخدام UTC للتواريخ
-    const startDate = moment.utc(date).startOf('day');
-    const endDate = moment.utc(date).endOf('day');
+    const startDate = moment.utc(date).startOf('day').format('YYYY-MM-DD');
+    const endDate = moment.utc(date).endOf('day').format('YYYY-MM-DD');
 
-    const tracking = await Tracking.findOne({
-      userId,
-      date: {
-        $gte: startDate.toDate(),
-        $lte: endDate.toDate()
-      }
-    });
+    const { data: tracking, error } = await supabase
+      .from('tracking')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .maybeSingle();
+
+    if (error) throw error;
 
     if (!tracking) {
       return {
@@ -1399,10 +1550,10 @@ async function calculateDailyStats(userId, date) {
     }
 
     return {
-      totalSeconds: tracking.workData.totalSeconds || 0,
-      activeSeconds: tracking.workData.activeSeconds || 0,
-      productivity: tracking.workData.productivity || 0,
-      lastUpdate: moment.utc(tracking.lastUpdate).format()
+      totalSeconds: tracking.total_seconds || 0,
+      activeSeconds: tracking.active_seconds || 0,
+      productivity: tracking.productivity || 0,
+      lastUpdate: moment.utc(tracking.last_update).format()
     };
   } catch (error) {
     console.error('Error calculating daily stats:', error);
@@ -1417,7 +1568,7 @@ router.get('/stats/:userId/:date?', async (req, res) => {
     const targetDate = date ? moment.utc(date) : moment.utc();
 
     const stats = await calculateDailyStats(userId, targetDate);
-    
+
     res.json({
       success: true,
       data: {
@@ -1456,32 +1607,42 @@ const createEmptyTrackingData = () => {
 router.get('/current', async (req, res) => {
   try {
     const userId = req.user.id;
-    const today = moment().startOf('day');
-    
-    const tracking = await Tracking.findOne({
-      userId,
-      date: {
-        $gte: today.toDate(),
-        $lt: moment(today).endOf('day').toDate()
-      }
-    });
-    
-    // إرجاع هيكل بيانات ثابت حتى في حالة عدم وجود بيانات
+    const todayString = moment().startOf('day').format('YYYY-MM-DD');
+
+    const { data: tracking, error } = await supabase
+      .from('tracking')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date_string', todayString)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    // Get screenshots if tracking exists
+    let screenshots = [];
+    if (tracking) {
+      const { data: ss } = await supabase
+        .from('tracking_screenshots')
+        .select('*')
+        .eq('tracking_id', tracking.id);
+      screenshots = ss || [];
+    }
+
     const responseData = {
       success: true,
       data: tracking ? {
-        totalSeconds: tracking.totalSeconds || 0,
-        activeSeconds: tracking.activeSeconds || 0,
-        idleSeconds: tracking.idleSeconds || 0,
-        breakSeconds: tracking.breakSeconds || 0,
+        totalSeconds: tracking.total_seconds || 0,
+        activeSeconds: tracking.active_seconds || 0,
+        idleSeconds: tracking.idle_seconds || 0,
+        breakSeconds: tracking.break_seconds || 0,
         productivity: tracking.productivity || 0,
-        lastActivity: tracking.lastActivity || null,
-        isWorking: tracking.isWorking || false,
+        lastActivity: tracking.last_activity || null,
+        isWorking: tracking.is_working || false,
         status: tracking.status || 'offline',
-        screenshots: tracking.screenshots || []
+        screenshots: screenshots
       } : createEmptyTrackingData()
     };
-    
+
     res.json(responseData);
   } catch (error) {
     console.error('خطأ في جلب بيانات التتبع:', error);
@@ -1489,9 +1650,9 @@ router.get('/current', async (req, res) => {
       success: false,
       message: 'خطأ في جلب بيانات التتبع',
       error: error.message,
-      data: createEmptyTrackingData() // إرجاع هيكل بيانات فارغ حتى في حالة الخطأ
+      data: createEmptyTrackingData()
     });
   }
 });
 
-module.exports = router; 
+module.exports = router;

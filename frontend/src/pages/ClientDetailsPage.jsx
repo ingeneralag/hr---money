@@ -48,15 +48,11 @@ const ClientDetailsPage = () => {
     const fetchClientData = async () => {
       try {
         setLoading(true)
-        const [clientData, filesData, messagesData] = await Promise.all([
-          clientService.getDetails(clientId),
-          clientService.getFiles(clientId),
-          clientService.getMessages(clientId)
-        ])
-        
-        setClient(clientData.data)
-        setClientFiles(filesData.data)
-        setChatMessages(messagesData.data)
+        const clientData = await clientService.getById(clientId);
+
+        setClient(clientData.data || clientData)
+        setClientFiles([])
+        setChatMessages([])
       } catch (err) {
         setError('حدث خطأ في جلب بيانات العميل')
         showError('حدث خطأ في جلب بيانات العميل')
@@ -236,7 +232,7 @@ const ClientDetailsPage = () => {
                 <MapPin className="w-5 h-5 text-gray-400" />
                 <div>
                   <p className="text-sm text-gray-500">العنوان</p>
-                  <p className="font-medium">{client.address}</p>
+                  <p className="font-medium">{typeof client.address === 'object' ? [client.address?.street, client.address?.city, client.address?.governorate].filter(Boolean).join(' - ') : (client.address || 'غير محدد')}</p>
                 </div>
               </div>
             </CardContent>

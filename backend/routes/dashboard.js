@@ -2,50 +2,56 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth, requireRole } = require('../middleware/auth');
 const sendError = require('../utils/sendError');
-const Employee = require('../models/Employee');
-const Transaction = require('../models/Transaction');
-const Client = require('../models/Client');
-const Attendance = require('../models/Attendance');
-const DailyAttendance = require('../models/DailyAttendance');
-const Payroll = require('../models/Payroll');
+const { supabase } = require('../config/database');
 
 // GET dashboard statistics
 router.get('/stats', requireAuth, async (req, res) => {
   try {
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString();
+
     const [
-      totalEmployees,
-      activeEmployees,
-      totalTransactions,
-      totalClients,
-      pendingEmployees,
-      todayAttendance
+      totalEmpResult,
+      activeEmpResult,
+      totalTransResult,
+      totalClientsResult,
+      pendingEmpResult,
+      todayAttResult,
+      incomeResult,
+      expenseResult
     ] = await Promise.all([
-      Employee.countDocuments(),
-      Employee.countDocuments({ status: { $in: ['فعال', 'active'] } }),
-      Transaction.countDocuments(),
-      Client.countDocuments(),
-      Employee.countDocuments({ approvalStatus: 'pending' }),
-      Attendance.countDocuments({ 
-        date: {
-          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          $lt: new Date(new Date().setHours(23, 59, 59, 999))
-        }
-      })
+      supabase.from('employees').select('*', { count: 'exact', head: true }),
+      supabase.from('employees').select('*', { count: 'exact', head: true }).in('status', ['فعال', 'active']),
+      supabase.from('transactions').select('*', { count: 'exact', head: true }),
+      supabase.from('clients').select('*', { count: 'exact', head: true }),
+      supabase.from('employees').select('*', { count: 'exact', head: true }).eq('approval_status', 'pending'),
+      supabase.from('attendance').select('*', { count: 'exact', head: true }).gte('date', todayStart).lte('date', todayEnd),
+      supabase.from('transactions').select('amount').eq('type', 'income'),
+      supabase.from('transactions').select('amount').eq('type', 'expense')
     ]);
 
-    // Calculate total revenue
-    const revenueResult = await Transaction.aggregate([
-      { $match: { type: 'income' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+    const totalEmployees = totalEmpResult.count || 0;
+    const activeEmployees = activeEmpResult.count || 0;
+    const totalTransactions = totalTransResult.count || 0;
+    const totalClients = totalClientsResult.count || 0;
+    const pendingEmployees = pendingEmpResult.count || 0;
+    const todayAttendance = todayAttResult.count || 0;
 
-    // Calculate total expenses
-    const expenseResult = await Transaction.aggregate([
-      { $match: { type: 'expense' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
+    const totalRevenue = (incomeResult.data || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalExpenses = (expenseResult.data || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+
+    // Calculate month-over-month change
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString();
+    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59).toISOString();
+    const [lastIncomeRes, lastExpenseRes] = await Promise.all([
+      supabase.from('transactions').select('amount').eq('type', 'income').gte('date', lastMonthStart).lte('date', lastMonthEnd),
+      supabase.from('transactions').select('amount').eq('type', 'expense').gte('date', lastMonthStart).lte('date', lastMonthEnd),
     ]);
-    const totalExpenses = expenseResult.length > 0 ? expenseResult[0].total : 0;
+    const lastRevenue = (lastIncomeRes.data || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+    const lastExpenses = (lastExpenseRes.data || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+    const revenueChange = lastRevenue > 0 ? Math.round(((totalRevenue - lastRevenue) / lastRevenue) * 100) : (totalRevenue > 0 ? 100 : 0);
+    const expensesChange = lastExpenses > 0 ? Math.round(((totalExpenses - lastExpenses) / lastExpenses) * 100) : (totalExpenses > 0 ? 100 : 0);
 
     const stats = {
       employees: {
@@ -57,7 +63,9 @@ router.get('/stats', requireAuth, async (req, res) => {
       financial: {
         totalRevenue,
         totalExpenses,
-        profit: totalRevenue - totalExpenses
+        profit: totalRevenue - totalExpenses,
+        revenueChange,
+        expensesChange
       },
       operations: {
         totalTransactions,
@@ -87,33 +95,37 @@ router.get('/activities', requireAuth, async (req, res) => {
     const activities = [];
 
     // Recent employee registrations
-    const recentEmployees = await Employee.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('name createdAt approvalStatus');
+    const { data: recentEmployees, error: empErr } = await supabase
+      .from('employees')
+      .select('name, created_at, approval_status')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (empErr) throw empErr;
 
-    recentEmployees.forEach(emp => {
+    (recentEmployees || []).forEach(emp => {
       activities.push({
         type: 'employee_registration',
         description: `تم تسجيل موظف جديد: ${emp.name}`,
-        timestamp: emp.createdAt,
-        status: emp.approvalStatus
+        timestamp: emp.created_at,
+        status: emp.approval_status
       });
     });
 
     // Recent transactions
-    const recentTransactions = await Transaction.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('description amount type createdAt');
+    const { data: recentTransactions, error: transErr } = await supabase
+      .from('transactions')
+      .select('description, amount, type, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (transErr) throw transErr;
 
-    recentTransactions.forEach(trans => {
+    (recentTransactions || []).forEach(trans => {
       activities.push({
         type: 'transaction',
         description: `معاملة جديدة: ${trans.description}`,
         amount: trans.amount,
         transactionType: trans.type,
-        timestamp: trans.createdAt
+        timestamp: trans.created_at
       });
     });
 
@@ -122,7 +134,7 @@ router.get('/activities', requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: activities.slice(0, 10) // Return top 10 recent activities
+      data: activities.slice(0, 10)
     });
   } catch (err) {
     console.error('Dashboard activities error:', err);
@@ -133,97 +145,122 @@ router.get('/activities', requireAuth, async (req, res) => {
 // GET analytics data for charts
 router.get('/analytics', requireAuth, async (req, res) => {
   try {
-    // Get monthly financial data for the past 6 months
     const now = new Date();
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    
-    const monthlyData = [];
-    const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 
+    const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
                        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-    
+
+    const monthlyData = [];
+
     for (let i = 0; i < 6; i++) {
       const startDate = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
       const endDate = new Date(now.getFullYear(), now.getMonth() - (5 - i) + 1, 0);
-      
-      const [incomeTotal, expenseTotal, salariesTotal] = await Promise.all([
-        Transaction.aggregate([
-          { 
-            $match: { 
-              type: 'income',
-              date: { $gte: startDate, $lte: endDate }
-            }
-          },
-          { $group: { _id: null, total: { $sum: '$amount' } } }
-        ]),
-        Transaction.aggregate([
-          { 
-            $match: { 
-              type: 'expense',
-              category: { $ne: 'رواتب' },
-              date: { $gte: startDate, $lte: endDate }
-            }
-          },
-          { $group: { _id: null, total: { $sum: '$amount' } } }
-        ]),
-        Payroll.aggregate([
-          { 
-            $match: { 
-              payrollDate: { $gte: startDate, $lte: endDate }
-            }
-          },
-          { $group: { _id: null, total: { $sum: '$netSalary' } } }
-        ])
+      const startISO = startDate.toISOString();
+      const endISO = endDate.toISOString();
+
+      const monthNum = startDate.getMonth() + 1;
+      const yearNum = startDate.getFullYear();
+
+      const [incomeRes, expenseRes, salariesRes] = await Promise.all([
+        supabase
+          .from('transactions')
+          .select('amount')
+          .eq('type', 'income')
+          .gte('date', startISO)
+          .lte('date', endISO),
+        supabase
+          .from('transactions')
+          .select('amount')
+          .eq('type', 'expense')
+          .neq('category', 'رواتب')
+          .gte('date', startISO)
+          .lte('date', endISO),
+        supabase
+          .from('payroll')
+          .select('net_salary')
+          .eq('month', `${yearNum}-${String(monthNum).padStart(2, '0')}`)
       ]);
-      
+
+      const income = (incomeRes.data || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+      const expenses = (expenseRes.data || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+      const salaries = (salariesRes.data || []).reduce((sum, p) => sum + (p.net_salary || 0), 0);
+
       monthlyData.push({
         name: monthNames[startDate.getMonth()],
-        income: incomeTotal.length > 0 ? incomeTotal[0].total : 0,
-        expenses: expenseTotal.length > 0 ? expenseTotal[0].total : 0,
-        salaries: salariesTotal.length > 0 ? salariesTotal[0].total : 0
+        income,
+        expenses,
+        salaries
       });
     }
-    
-    // Get expense categories
-    const expenseCategories = await Transaction.aggregate([
-      { $match: { type: 'expense' } },
-      { $group: { _id: '$category', value: { $sum: '$amount' } } },
-      { $sort: { value: -1 } },
-      { $limit: 5 }
-    ]);
-    
-    const formattedExpenseCategories = expenseCategories.map((cat, index) => ({
-      name: cat._id || 'أخرى',
-      value: cat.value,
-      color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index] || '#6b7280'
+
+    // Expense categories
+    const { data: allExpenses, error: expErr } = await supabase
+      .from('transactions')
+      .select('category, amount')
+      .eq('type', 'expense');
+    if (expErr) throw expErr;
+
+    // Group by category manually
+    const categoryMap = {};
+    (allExpenses || []).forEach(t => {
+      const cat = t.category || 'أخرى';
+      categoryMap[cat] = (categoryMap[cat] || 0) + (t.amount || 0);
+    });
+
+    const sortedCategories = Object.entries(categoryMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    const formattedExpenseCategories = sortedCategories.map(([name, value], index) => ({
+      name,
+      value,
+      color: colors[index] || '#6b7280'
     }));
-    
-    // Get quick stats
-    const [avgSalaryResult, totalBonusesResult, attendanceData] = await Promise.all([
-      Payroll.aggregate([
-        { $group: { _id: null, avgSalary: { $avg: '$netSalary' } } }
-      ]),
-      Payroll.aggregate([
-        { $group: { _id: null, totalBonuses: { $sum: '$bonuses' } } }
-      ]),
-      DailyAttendance.countDocuments({
-        date: {
-          $gte: new Date(now.getFullYear(), now.getMonth(), 1),
-          $lte: now
-        },
-        status: 'present'
-      })
-    ]);
-    
-    const totalEmployees = await Employee.countDocuments({ status: { $in: ['فعال', 'active'] } });
+
+    // Quick stats
+    const { data: allPayrolls, error: payErr } = await supabase
+      .from('payroll')
+      .select('net_salary');
+    if (payErr) throw payErr;
+
+    const avgSalary = (allPayrolls || []).length > 0
+      ? Math.round((allPayrolls || []).reduce((sum, p) => sum + (p.net_salary || 0), 0) / allPayrolls.length)
+      : 0;
+
+    // Bonuses total
+    const { data: allBonuses, error: bonErr } = await supabase
+      .from('payroll_bonuses')
+      .select('amount');
+    if (bonErr) throw bonErr;
+    const totalBonuses = (allBonuses || []).reduce((sum, b) => sum + (b.amount || 0), 0);
+
+    // Attendance this month
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const { count: attendanceCount, error: attErr } = await supabase
+      .from('daily_attendance')
+      .select('*', { count: 'exact', head: true })
+      .gte('date', monthStart)
+      .lte('date', now.toISOString())
+      .eq('status', 'present');
+    if (attErr) throw attErr;
+
+    const { count: totalActiveEmployees, error: actErr } = await supabase
+      .from('employees')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['فعال', 'active']);
+    if (actErr) throw actErr;
+
     const workingDays = Math.floor((now - new Date(now.getFullYear(), now.getMonth(), 1)) / (1000 * 60 * 60 * 24)) + 1;
-    
+
     const quickStats = {
-      avgSalary: Math.round(avgSalaryResult.length > 0 ? avgSalaryResult[0].avgSalary : 0),
-      monthlyGrowth: 0, // This would need historical data to calculate
-      totalBonuses: totalBonusesResult.length > 0 ? totalBonusesResult[0].totalBonuses : 0,
-      attendanceRate: totalEmployees > 0 ? Math.round((attendanceData / (totalEmployees * workingDays)) * 100) : 0
+      avgSalary,
+      monthlyGrowth: 0,
+      totalBonuses,
+      attendanceRate: (totalActiveEmployees || 0) > 0
+        ? Math.round(((attendanceCount || 0) / ((totalActiveEmployees || 0) * workingDays)) * 100)
+        : 0
     };
-    
+
     res.json({
       success: true,
       data: {
@@ -242,58 +279,45 @@ router.get('/analytics', requireAuth, async (req, res) => {
 router.get('/active-employees', requireAuth, async (req, res) => {
   try {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get employees with today's attendance
-    const activeEmployees = await Employee.aggregate([
-      {
-        $match: { 
-          status: { $in: ['فعال', 'active'] }
-        }
-      },
-      {
-        $lookup: {
-          from: 'dailyattendances',
-          let: { empId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$employee', '$$empId'] },
-                date: { $gte: today }
-              }
-            }
-          ],
-          as: 'attendance'
-        }
-      },
-      {
-        $addFields: {
-          todayAttendance: { $arrayElemAt: ['$attendance', 0] },
-          status: {
-            $cond: {
-              if: { $gt: [{ $size: '$attendance' }, 0] },
-              then: 'حاضر',
-              else: 'غائب'
-            }
-          }
-        }
-      },
-      {
-        $match: { status: 'حاضر' } // Only return present employees
-      },
-      {
-        $project: {
-          name: 1,
-          position: 1,
-          department: 1,
-          status: 1,
-          location: 'المكتب', // Default location
-          workingHours: { $ifNull: ['$todayAttendance.totalHours', 0] },
-          checkInTime: { $ifNull: ['$todayAttendance.checkInTime', ''] }
-        }
-      }
-    ]);
-    
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+
+    // Get active employees
+    const { data: employees, error: empErr } = await supabase
+      .from('employees')
+      .select('id, name, position, department')
+      .in('status', ['فعال', 'active']);
+    if (empErr) throw empErr;
+
+    // Get today's attendance records
+    const { data: attendanceRecords, error: attErr } = await supabase
+      .from('daily_attendance')
+      .select('employee_id, total_hours, check_in_time')
+      .gte('date', todayStart);
+    if (attErr) throw attErr;
+
+    // Build attendance map
+    const attendanceMap = {};
+    (attendanceRecords || []).forEach(a => {
+      attendanceMap[a.employee_id] = a;
+    });
+
+    // Filter to only present employees and format
+    const activeEmployees = (employees || [])
+      .filter(emp => attendanceMap[emp.id])
+      .map(emp => {
+        const att = attendanceMap[emp.id];
+        return {
+          id: emp.id,
+          name: emp.name,
+          position: emp.position,
+          department: emp.department,
+          status: 'حاضر',
+          location: 'المكتب',
+          workingHours: att.total_hours || 0,
+          checkInTime: att.check_in_time || ''
+        };
+      });
+
     res.json({
       success: true,
       data: activeEmployees
@@ -304,4 +328,4 @@ router.get('/active-employees', requireAuth, async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

@@ -492,16 +492,12 @@ const EmployeesPage = () => {
 
   return (
     <>
-    <div className="space-y-6 page-enter">
+    <div className="space-y-4 p-4 md:p-6">
       {/* العنوان والبحث */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white gradient-text">
-            إدارة الموظفين والرواتب
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            إدارة معلومات الموظفين ورواتبهم مع نظام المكافآت والخصومات
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">إدارة الموظفين</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">إدارة معلومات الموظفين ورواتبهم</p>
         </div>
         
         <div className="flex gap-3 items-center">
@@ -683,81 +679,61 @@ const EmployeesPage = () => {
         </Card>
       )}
 
-      {/* إحصائيات سريعة */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">إجمالي الموظفين</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{employees.length}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              موظف معتمد {pendingEmployees.length > 0 && (
-                <span className="text-orange-600 font-medium">
-                  + {pendingEmployees.length} معلق
-                </span>
-              )}
-            </p>
+      {/* إحصائيات */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-blue-700 dark:text-blue-400">إجمالي الموظفين</p>
+                <p className="text-xl font-bold text-blue-900 dark:text-blue-100 mt-1">{employees.length}</p>
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">موظف معتمد {pendingEmployees.length > 0 && `+ ${pendingEmployees.length} معلق`}</p>
+              </div>
+              <Users className="w-7 h-7 text-blue-500" />
+            </div>
           </CardContent>
         </Card>
-
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">متوسط الراتب</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {employees.length > 0 ? formatCurrency(
-                employees.reduce((sum, emp) => sum + calculateCurrentSalary(emp), 0) / employees.length
-              ) : '0 جنيه'}
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-green-700 dark:text-green-400">متوسط الراتب</p>
+                <p className="text-xl font-bold text-green-900 dark:text-green-100 mt-1">{employees.length > 0 ? formatCurrency(employees.reduce((sum, emp) => sum + calculateCurrentSalary(emp), 0) / employees.length) : '0'}</p>
+                <p className="text-[10px] text-green-600 dark:text-green-400 mt-0.5">شامل البدلات</p>
+              </div>
+              <DollarSign className="w-7 h-7 text-green-500" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">شامل البدلات</p>
           </CardContent>
         </Card>
-
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">مكافآت هذا الشهر</CardTitle>
-            <Gift className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {employees.reduce((sum, emp) => 
-                sum + (emp.monthlyAdjustments?.bonuses?.reduce((b, bonus) => b + bonus.amount, 0) || 0), 0
-              )} جنيه
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">مكافآت الشهر</p>
+                <p className="text-xl font-bold text-amber-900 dark:text-amber-100 mt-1">{employees.reduce((sum, emp) => sum + (emp.monthlyAdjustments?.bonuses?.reduce((b, bonus) => b + bonus.amount, 0) || 0), 0)} EGP</p>
+              </div>
+              <Gift className="w-7 h-7 text-amber-500" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">مكافأة</p>
           </CardContent>
         </Card>
-
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">إجمالي الرواتب</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(employees.reduce((sum, emp) => sum + calculateCurrentSalary(emp), 0))}
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-purple-700 dark:text-purple-400">إجمالي الرواتب</p>
+                <p className="text-xl font-bold text-purple-900 dark:text-purple-100 mt-1">{formatCurrency(employees.reduce((sum, emp) => sum + calculateCurrentSalary(emp), 0))}</p>
+                <p className="text-[10px] text-purple-600 dark:text-purple-400 mt-0.5">صافي الرواتب</p>
+              </div>
+              <TrendingUp className="w-7 h-7 text-purple-500" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">صافي الرواتب</p>
           </CardContent>
         </Card>
       </div>
 
       {/* جدول الموظفين */}
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
-        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-blue-200 dark:border-blue-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-              <Users className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-blue-700 dark:text-blue-300">قائمة الموظفين ({filteredEmployees.length})</CardTitle>
-              <p className="text-sm text-blue-600 dark:text-blue-400">إدارة وعرض بيانات الموظفين</p>
-            </div>
-          </div>
+      <Card className="border border-gray-200 dark:border-gray-700">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-base font-bold text-gray-900 dark:text-white">قائمة الموظفين ({filteredEmployees.length})</CardTitle>
           
           {/* أزرار الإرسال الجماعي */}
           <div className="flex gap-2">
@@ -862,154 +838,82 @@ const EmployeesPage = () => {
                   }
                 }
               }}
-              className="bg-yellow-600 hover:bg-yellow-700"
-              title="إرسال تحديث الإجازات لجميع الموظفين"
+              className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs"
               disabled={isLoading}
             >
-              <Calendar className="w-4 h-4 mr-1" />
-              تحديث إجازات جماعي
+              <Calendar className="w-3.5 h-3.5 mr-1" />
+              تحديث إجازات
             </Button>
               {isAdmin && (
-                <Button
-                  size="sm"
-                  onClick={() => setShowAddModal(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                  title="إضافة موظف جديد"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  إضافة موظف جديد
+                <Button size="sm" onClick={() => setShowAddModal(true)} className="bg-green-600 hover:bg-green-700 text-white text-xs">
+                  <Plus className="w-3.5 h-3.5 mr-1" /> إضافة موظف
                 </Button>
               )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-blue-200 dark:border-blue-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-                  <th className="text-right p-4 font-bold text-blue-700 dark:text-blue-300">الموظف</th>
-                  <th className="text-right p-4 font-bold text-blue-700 dark:text-blue-300">الوظيفة</th>
-                  <th className="text-right p-4 font-bold text-blue-700 dark:text-blue-300">معلومات الراتب</th>
-                  <th className="text-right p-4 font-bold text-blue-700 dark:text-blue-300">صافي الراتب</th>
-                  <th className="text-center p-4 font-bold text-blue-700 dark:text-blue-300">الإجراءات</th>
+                <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                  {['الموظف','القسم','الراتب','الصافي',''].map((h,i) => (
+                    <th key={i} className={`px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 ${i < 4 ? 'text-right' : 'text-center'} whitespace-nowrap`}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {filteredEmployees.map((employee, index) => {
-                  const allowancesTotal = Object.values(employee.allowances || {}).reduce((sum, allowance) => sum + allowance, 0)
-                  const deductionsTotal = Object.values(employee.deductions || {}).reduce((sum, deduction) => sum + deduction, 0)
+                  const allowancesTotal = Object.values(employee.allowances || {}).reduce((sum, a) => sum + a, 0)
+                  const deductionsTotal = Object.values(employee.deductions || {}).reduce((sum, d) => sum + d, 0)
                   const netSalary = calculateCurrentSalary(employee)
 
                   return (
-                    <tr 
-                      key={employee.id || employee._id} 
-                      className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 dark:hover:from-blue-900/10 dark:hover:to-indigo-900/10 transition-all duration-200 cursor-pointer group ${
-                        index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/30 dark:bg-gray-800/50'
-                      }`}
+                    <tr key={employee.id || employee._id}
+                      className={`group hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/30'}`}
                       onClick={() => navigate(`/employees/${employee.id || employee._id}`)}
-                      title="اضغط لعرض تفاصيل الموظف"
                     >
-                      <td className="p-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:shadow-xl transition-shadow">
-                            {employee.name?.charAt(0)?.toUpperCase() || 'M'}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-semibold text-gray-900 dark:text-white text-base flex items-center gap-2">
-                              {employee.name}
-                              <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                            <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                              <div className="flex items-center gap-1">
-                                <Phone className="w-3 h-3" />
-                                <span>{employee.phone}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                <span className="text-blue-600 dark:text-blue-400">{employee.email}</span>
-                              </div>
-                            </div>
+                      {/* الموظف */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{employee.name?.charAt(0)}</div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{employee.name}</p>
+                            <p className="text-[11px] text-gray-400 font-mono">{employee.phone}</p>
                           </div>
                         </div>
                       </td>
-                      
-                      <td className="p-4">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{employee.position}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{employee.department}</p>
-                        </div>
+                      {/* القسم */}
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{employee.position}</p>
+                        <p className="text-[11px] text-gray-400">{employee.department}</p>
                       </td>
-                      
-                      <td className="p-4">
+                      {/* الراتب */}
+                      <td className="px-4 py-3">
                         <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-500">أساسي:</span>
-                            <span className="font-medium">{formatCurrency(employee.baseSalary)}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-gray-400 w-12">أساسي</span>
+                            <span className="font-mono text-sm font-semibold text-gray-800 dark:text-gray-200">{formatCurrency(employee.baseSalary)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-green-600">بدلات:</span>
-                            <span className="text-green-600 font-medium">+{formatCurrency(allowancesTotal)}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-green-500 w-12">بدلات</span>
+                            <span className="font-mono text-sm font-semibold text-green-600 dark:text-green-400">+{formatCurrency(allowancesTotal)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-red-600">خصومات:</span>
-                            <span className="text-red-600 font-medium">-{formatCurrency(deductionsTotal)}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-red-400 w-12">خصومات</span>
+                            <span className="font-mono text-sm font-semibold text-red-500 dark:text-red-400">-{formatCurrency(deductionsTotal)}</span>
                           </div>
                         </div>
                       </td>
-                      
-                      <td className="p-4">
-                        <div className="text-center">
-                          <span className="font-bold text-xl text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-lg shadow-sm">
-                            {formatCurrency(netSalary)}
-                          </span>
-                        </div>
+                      {/* الصافي */}
+                      <td className="px-4 py-3">
+                        <span className="font-bold text-base text-green-600 dark:text-green-400 font-mono">{formatCurrency(netSalary)}</span>
                       </td>
-                      
-                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex gap-1 justify-center flex-wrap">
-                          {isAdmin && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => navigate(`/employees/${employee.id || employee._id}`)}
-                                className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-                                title="عرض التفاصيل"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => loadEmployeeForEdit(employee)}
-                                className="border-gray-600 text-gray-600 hover:bg-gray-50 dark:border-gray-400 dark:text-gray-400 dark:hover:bg-gray-900/20 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-                                title="تعديل بيانات الموظف"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => openMessageTypeModal(employee)}
-                                className="border-green-600 text-green-600 hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/20 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-                                title="إرسال رسالة WhatsApp"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                          
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => deleteEmployee(employee.id || employee._id)}
-                            className="border-red-600 text-red-600 hover:bg-red-50 dark:border-red-400 dark:text-red-400 dark:hover:bg-red-900/20 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-                            title="حذف الموظف"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
+                      {/* إجراءات */}
+                      <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => navigate(`/employees/${employee.id || employee._id}`)} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" title="عرض"><Eye className="w-4 h-4" /></button>
+                          <button onClick={() => loadEmployeeForEdit(employee)} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="تعديل"><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => deleteEmployee(employee.id || employee._id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="حذف"><X className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </tr>

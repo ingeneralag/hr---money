@@ -38,6 +38,11 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   TrendingUp,
+  TrendingDown,
+  Edit,
+  Trash2,
+  ChevronRight,
+  ChevronLeft,
   Calendar,
   Plus,
   Download,
@@ -455,217 +460,87 @@ const TransactionsPage = () => {
     return matchesSearch && matchesCategory && matchesType && matchesClient
   })
 
-  const TransactionCard = ({ transaction }) => (
-    <Card className="hover:shadow-lg transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <div className={`p-2 rounded-full ${transaction.type === 'income'
-                ? 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                : transaction.type === 'expense'
-                  ? 'bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400'
-                  : 'bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'
-                }`}>
-                {transaction.type === 'income' ? (
-                  <ArrowDownCircle className="w-4 h-4" />
-                ) : transaction.type === 'expense' ? (
-                  <ArrowUpCircle className="w-4 h-4" />
-                ) : (
-                  <TrendingUp className="w-4 h-4" />
-                )}
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  {transaction.description}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  <span>رقم المعاملة: </span>
-                  <span className="font-semibold">{transaction.transactionNumber || 'غير محدد'}</span>
-                  {transaction.reference && <span> • {transaction.reference}</span>}
-                  {transaction.date && <span> • {formatDate(transaction.date)}</span>}
-                </p>
-              </div>
+  const TransactionCard = ({ transaction: t }) => {
+    const typeConfig = {
+      income: { color: 'green', label: 'إيرادات', sign: '+', Icon: ArrowDownCircle, bg: 'from-green-500 to-emerald-600' },
+      expense: { color: 'red', label: 'مصروفات', sign: '-', Icon: ArrowUpCircle, bg: 'from-red-500 to-rose-600' },
+      debt: { color: 'purple', label: 'مديونية', sign: '', Icon: TrendingUp, bg: 'from-purple-500 to-violet-600' },
+    };
+    const cfg = typeConfig[t.type] || typeConfig.income;
+    const TypeIcon = cfg.Icon;
+
+    return (
+    <div className={`group rounded-xl overflow-hidden hover:shadow-md transition-all bg-gradient-to-br ${cfg.color === 'green' ? 'from-green-50 to-emerald-50 dark:from-green-900/15 dark:to-emerald-900/10' : cfg.color === 'red' ? 'from-red-50 to-rose-50 dark:from-red-900/15 dark:to-rose-900/10' : 'from-purple-50 to-violet-50 dark:from-purple-900/15 dark:to-violet-900/10'} border border-${cfg.color}-100 dark:border-${cfg.color}-900/30`}>
+      <div className="p-4">
+        {/* Header: icon + title + amount */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className={`w-9 h-9 rounded-lg bg-${cfg.color}-100 dark:bg-${cfg.color}-900/30 flex items-center justify-center flex-shrink-0`}>
+              <TypeIcon className={`w-4.5 h-4.5 text-${cfg.color}-600 dark:text-${cfg.color}-400`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">{t.description}</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono">{t.transactionNumber || ''} {t.date ? `· ${formatDate(t.date)}` : ''}</p>
             </div>
           </div>
-          <div className="text-left">
-            <div className={`text-xl font-bold ${transaction.type === 'income'
-              ? 'text-green-600 dark:text-green-400'
-              : transaction.type === 'expense'
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-purple-600 dark:text-purple-400'
-              }`}>
-              {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : '='}{formatCurrency(transaction.amount)}
-              {transaction.currency && <span className="text-base ml-1">{transaction.currency}</span>}
-            </div>
-            <div className={`text-xs px-2 py-1 rounded-full mt-1 ${transaction.status === 'approved'
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-              : transaction.status === 'rejected'
-                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-              }`}>
-              {transaction.status === 'approved' ? 'مكتمل' :
-                transaction.status === 'rejected' ? 'مرفوض' :
-                  'قيد المراجعة'}
-            </div>
-            {/* عرض حالة المديونية */}
-            {transaction.type === 'debt' && (
-              <div className={`text-xs px-2 py-1 rounded-full mt-1 ${transaction.debtStatus === 'paid'
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                : transaction.debtStatus === 'partial'
-                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                }`}>
-                {transaction.debtStatus === 'paid' ? 'مدفوعة بالكامل' :
-                  transaction.debtStatus === 'partial' ? 'مدفوعة جزئياً' :
-                    'غير مدفوعة'}
-                {transaction.debtStatus !== 'paid' && transaction.remainingAmount && (
-                  <span className="ml-1">({formatCurrency(transaction.remainingAmount)} متبقي)</span>
-                )}
-              </div>
-            )}
+          <div className="text-left flex-shrink-0">
+            <p className={`text-lg font-bold text-${cfg.color}-600 dark:text-${cfg.color}-400 font-mono`} dir="ltr">
+              {cfg.sign}{formatCurrency(t.amount)} <span className="text-xs">{t.currency || 'EGP'}</span>
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">التصنيف: </span>
-            <span className="font-medium text-gray-900 dark:text-white">{transaction.category || 'غير محدد'}</span>
-            {transaction.subcategory && (
-              <span className="ml-2 text-gray-500 dark:text-gray-400">({transaction.subcategory})</span>
-            )}
-          </div>
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">طريقة الدفع: </span>
-            <span className="font-medium text-gray-900 dark:text-white">{transaction.paymentMethod || 'غير محدد'}</span>
-          </div>
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">الحالة: </span>
-            <span className="font-medium text-gray-900 dark:text-white">{transaction.status || 'غير محدد'}</span>
-          </div>
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">أنشأ بواسطة: </span>
-            <span className="font-medium text-gray-900 dark:text-white">{transaction.createdBy || 'غير محدد'}</span>
-          </div>
-          {/* عرض العميل أو الموظف إذا وجد */}
-          {transaction.clientId && (
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">العميل: </span>
-              <span className="font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md">
-                {getClientName(transaction.clientId)}
-              </span>
-            </div>
+        {/* Meta tags row */}
+        <div className="flex flex-wrap items-center gap-1.5 mt-3">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-${cfg.color}-50 text-${cfg.color}-700 dark:bg-${cfg.color}-900/20 dark:text-${cfg.color}-400`}>{cfg.label}</span>
+          {t.category && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">{t.category}</span>}
+          {t.paymentMethod && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">{t.paymentMethod}</span>}
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${t.status === 'approved' ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' : t.status === 'rejected' ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'}`}>
+            {t.status === 'approved' ? 'مكتمل' : t.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+          </span>
+          {t.type === 'debt' && t.debtStatus && (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${t.debtStatus === 'paid' ? 'bg-green-50 text-green-700' : t.debtStatus === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+              {t.debtStatus === 'paid' ? 'مسددة' : t.debtStatus === 'partial' ? 'جزئي' : 'غير مسددة'}
+            </span>
           )}
-          {transaction.employeeId && (
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">الموظف: </span>
-              <span className="font-medium text-gray-900 dark:text-white">{transaction.employeeId}</span>
-            </div>
-          )}
-          {transaction.approvedBy && (
-            <div className="md:col-span-2">
-              <span className="text-gray-500 dark:text-gray-400">اعتمد بواسطة: </span>
-              <span className="font-medium text-gray-900 dark:text-white">{transaction.approvedBy}</span>
-            </div>
-          )}
-          {transaction.rejectedBy && (
-            <div className="md:col-span-2">
-              <span className="text-gray-500 dark:text-gray-400">رفض بواسطة: </span>
-              <span className="font-medium text-red-600 dark:text-red-400">{transaction.rejectedBy}</span>
-              {transaction.rejectionReason && (
-                <p className="text-sm text-gray-500 mt-1">السبب: {transaction.rejectionReason}</p>
-              )}
-            </div>
-          )}
+          {t.clientId && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400">{getClientName(t.clientId)}</span>}
         </div>
 
-        {transaction.notes && (
-          <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
-            <span className="text-gray-500 dark:text-gray-400">ملاحظات: </span>
-            <span className="text-gray-700 dark:text-gray-300">{transaction.notes}</span>
-          </div>
-        )}
-        {/* عرض المرفقات إذا وجدت */}
-        {transaction.attachments && transaction.attachments.length > 0 && (
-          <div className="mb-4">
-            <span className="text-gray-500 dark:text-gray-400 text-sm">المرفقات: </span>
-            <ul className="list-disc ml-6 mt-1">
-              {transaction.attachments.map((file, idx) => (
-                <li key={idx} className="text-blue-600 dark:text-blue-400 underline cursor-pointer">{file}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {/* أزرار العمليات */}
-        {isAdmin && transaction.status === 'pending' && (
-          <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-            <Button
-              onClick={() => handleApproveTransaction(transaction._id)}
-              className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
-              size="lg"
-            >
-              <CheckCircle className="w-5 h-5" />
-              ✅ موافقة
-            </Button>
-            <Button
-              onClick={() => handleRejectTransaction(transaction._id)}
-              variant="outline"
-              className="flex-1 gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 font-semibold py-3"
-              size="lg"
-            >
-              <XCircle className="w-5 h-5" />
-              ❌ رفض
-            </Button>
-          </div>
-        )}
+        {/* Notes */}
+        {t.notes && <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2 line-clamp-2">{t.notes}</p>}
 
-        {isAdmin && transaction.status !== 'pending' && (
-          <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleEditTransaction(transaction)}
-              className="flex-1 gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              تعديل
-            </Button>
-            {transaction.type === 'debt' && transaction.debtStatus !== 'paid' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePayDebt(transaction)}
-                className="flex-1 gap-2 text-green-600 hover:text-green-700 hover:bg-green-50"
-              >
-                <CheckCircle className="w-4 h-4" />
-                سداد
-              </Button>
+        {/* Action buttons */}
+        {isAdmin && (
+          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+            {t.status === 'pending' ? (
+              <>
+                <button onClick={() => handleApproveTransaction(t._id)} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors">
+                  <CheckCircle className="w-3.5 h-3.5" /> موافقة
+                </button>
+                <button onClick={() => handleRejectTransaction(t._id)} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs font-semibold transition-colors">
+                  <XCircle className="w-3.5 h-3.5" /> رفض
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => handleEditTransaction(t)} className="flex items-center gap-1 px-3 h-7 rounded-lg text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <Edit className="w-3 h-3" /> تعديل
+                </button>
+                {t.type === 'debt' && t.debtStatus !== 'paid' && (
+                  <button onClick={() => handlePayDebt(t)} className="flex items-center gap-1 px-3 h-7 rounded-lg text-xs text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                    <CheckCircle className="w-3 h-3" /> سداد
+                  </button>
+                )}
+                <button onClick={() => handleDeleteTransaction(t._id)} className="flex items-center gap-1 px-3 h-7 rounded-lg text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mr-auto">
+                  <Trash2 className="w-3 h-3" /> حذف
+                </button>
+              </>
             )}
-            {transaction.type === 'debt' && transaction.paymentHistory && transaction.paymentHistory.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleViewPaymentHistory(transaction)}
-                className="flex-1 gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-              >
-                <TrendingUp className="w-4 h-4" />
-                تاريخ السداد
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleDeleteTransaction(transaction._id)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-            >
-              <Filter className="w-4 h-4" />
-              حذف
-            </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
-  )
+      </div>
+    </div>
+  )}
 
   return (
     <div className="space-y-6">
@@ -673,16 +548,14 @@ const TransactionsPage = () => {
       <style>{treasuryStyles}</style>
 
 
-      {/* العنوان والإحصائيات */}
+      {/* العنوان والأزرار */}
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">المعاملات المالية</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              إدارة وتتبع جميع المعاملات المالية
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">المعاملات المالية</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">إدارة وتتبع جميع المعاملات المالية</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               className="gap-2"
@@ -731,288 +604,104 @@ const TransactionsPage = () => {
             </Button>
             <Button
               onClick={() => setShowAddModal(true)}
-              className="gap-2 bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              size="lg"
+              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
             >
-              <Plus className="w-5 h-5" />
-              ✨ إضافة معاملة جديدة ✨
+              <Plus className="w-4 h-4" />
+              إضافة معاملة
             </Button>
           </div>
         </div>
 
-        {/* الإحصائيات السريعة */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">الإحصائيات المالية</h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 rounded-full border border-amber-300 dark:border-amber-600">
-              <span className="text-amber-600 dark:text-amber-400">💰</span>
-              <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">الخزنة</span>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                const response = await treasuryService.recalculate();
-                if (response.success) {
-                  toast.success('تم إعادة حساب الخزنة بنجاح');
-                  await fetchTreasuryData();
-                }
-              } catch (error) {
-                toast.error('خطأ في إعادة حساب الخزنة');
-              }
-            }}
-            className="gap-2 text-blue-600 hover:text-blue-700"
-          >
-            <TrendingUp className="w-4 h-4" />
-            إعادة حساب الخزنة
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* بطاقة الخزنة - مميزة وواضحة */}
-          <Card className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/30 dark:via-yellow-900/20 dark:to-orange-900/30 border-4 border-amber-300 dark:border-amber-600 shadow-2xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden ring-4 ring-amber-200 dark:ring-amber-800 ring-opacity-50 treasury-glow treasury-float">
-            {/* تأثير لامع في الخلفية */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 treasury-shimmer"></div>
-
-            <CardContent className="p-4 relative z-10">
+        {/* الإحصائيات */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
-                    <p className="text-sm font-bold text-amber-800 dark:text-amber-200 uppercase tracking-wide">💰 الخزنة الحالية</p>
-                    <div className="ml-auto px-2 py-1 bg-amber-200 dark:bg-amber-800 rounded-full">
-                      <span className="text-xs font-bold text-amber-800 dark:text-amber-200">VIP</span>
-                    </div>
-                  </div>
-
-                  <div className="relative">
-                    <p className="text-3xl font-black text-amber-900 dark:text-amber-100 mb-1 drop-shadow-lg relative z-10">
-                      {formatCurrency(treasuryData.currentBalance)}
-                    </p>
-                    {/* تأثير خلفية للرقم */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-amber-200/30 to-yellow-200/30 dark:from-amber-800/30 dark:to-yellow-800/30 rounded-lg blur-sm -z-10"></div>
-                  </div>
-
-                  {/* مؤشر الحالة المبسط */}
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${treasuryData.currentBalance >= 0 ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'
-                      }`}></div>
-                    <span className={`text-xs font-semibold ${treasuryData.currentBalance >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-                      }`}>
-                      {treasuryData.currentBalance >= 0 ? 'رصيد إيجابي' : 'رصيد سالب'}
-                    </span>
-                  </div>
+                <div>
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-400">الرصيد الإجمالي</p>
+                  <p className="text-xl font-bold text-amber-900 dark:text-amber-100 mt-1">{formatCurrency(treasuryData.currentBalance)}</p>
                 </div>
-
-                <div className="text-center ml-3">
-                  <div className="relative group">
-                    <DollarSign className="w-10 h-10 text-amber-600 dark:text-amber-400 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center animate-bounce">
-                      <span className="text-xs font-bold text-white">💎</span>
-                    </div>
-                    {/* تأثير دائري حول الأيقونة */}
-                    <div className="absolute inset-0 rounded-full border-2 border-amber-300 dark:border-amber-600 opacity-30 group-hover:opacity-60 transition-opacity duration-300"></div>
-                  </div>
-
-                  {/* أيقونات إضافية مبسطة */}
-                  <div className="mt-1 flex justify-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce"></div>
-                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-1.5 h-1.5 bg-amber-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                </div>
+                <DollarSign className="w-7 h-7 text-amber-500" />
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">إجمالي الإيرادات</p>
-                  <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                    {formatCurrency(stats.totalIncome)}
-                  </p>
+                  <p className="text-xs font-medium text-green-700 dark:text-green-400">الإيرادات</p>
+                  <p className="text-xl font-bold text-green-900 dark:text-green-100 mt-1">{formatCurrency(stats.totalIncome)}</p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-green-600 dark:text-green-400" />
+                <TrendingUp className="w-7 h-7 text-green-500" />
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-red-700 dark:text-red-300">إجمالي المصروفات</p>
-                  <p className="text-2xl font-bold text-red-900 dark:text-red-100">
-                    {formatCurrency(stats.totalExpenses)}
-                  </p>
+                  <p className="text-xs font-medium text-red-700 dark:text-red-400">المصروفات</p>
+                  <p className="text-xl font-bold text-red-900 dark:text-red-100 mt-1">{formatCurrency(stats.totalExpenses)}</p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-red-600 dark:text-red-400" />
+                <TrendingDown className="w-7 h-7 text-red-500" />
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300">صافي الربح</p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">(يشمل الرسوم)</p>
-                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                    {formatCurrency(stats.totalIncome - stats.totalExpenses + stats.totalFeesCollected)}
-                  </p>
+                  <p className="text-xs font-medium text-blue-700 dark:text-blue-400">صافي الربح</p>
+                  <p className="text-xl font-bold text-blue-900 dark:text-blue-100 mt-1">{formatCurrency(stats.totalIncome - stats.totalExpenses)}</p>
                 </div>
-                <DollarSign className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* بطاقة المديونيات الإجمالية */}
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300">إجمالي المديونيات</p>
-                  <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                    {formatCurrency(stats.totalDebts)}
-                  </p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* بطاقة المديونيات المدفوعة */}
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">المديونيات المدفوعة</p>
-                  <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                    {formatCurrency(stats.paidDebts)}
-                  </p>
-                </div>
-                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* بطاقة المديونيات المتبقية */}
-          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-orange-700 dark:text-orange-300">المديونيات المتبقية</p>
-                  <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                    {formatCurrency(stats.remainingDebts)}
-                  </p>
-                </div>
-                <XCircle className="w-8 h-8 text-orange-600 dark:text-orange-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">قيد المراجعة</p>
-                  <p className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">
-                    {stats.pendingTransactions}
-                  </p>
-                </div>
-                <Calendar className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* بطاقة الرسوم المحصلة (مكسب صافي) */}
-          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">الرسوم المحصلة</p>
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">(مكسب صافي)</p>
-                  <p className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">
-                    {formatCurrency(stats.totalFeesCollected)}
-                  </p>
-                </div>
-                <DollarSign className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                <DollarSign className="w-7 h-7 text-blue-500" />
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* صف ثاني - الديون */}
+        {(stats.totalDebts > 0 || stats.pendingTransactions > 0) && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-gray-500 dark:text-gray-400">المديونيات</p><p className="text-lg font-bold text-purple-700 dark:text-purple-300">{formatCurrency(stats.totalDebts)}</p></div><TrendingUp className="w-6 h-6 text-purple-400" /></div></CardContent></Card>
+          <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-gray-500 dark:text-gray-400">المتبقي</p><p className="text-lg font-bold text-orange-700 dark:text-orange-300">{formatCurrency(stats.remainingDebts)}</p></div><XCircle className="w-6 h-6 text-orange-400" /></div></CardContent></Card>
+          <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-gray-500 dark:text-gray-400">المدفوع</p><p className="text-lg font-bold text-green-700 dark:text-green-300">{formatCurrency(stats.paidDebts)}</p></div><CheckCircle className="w-6 h-6 text-green-400" /></div></CardContent></Card>
+          <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-gray-500 dark:text-gray-400">قيد المراجعة</p><p className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{stats.pendingTransactions}</p></div><Calendar className="w-6 h-6 text-yellow-400" /></div></CardContent></Card>
+        </div>
+        )}
       </div>
 
       {/* البحث والفلترة */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="relative">
-              <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="البحث في المعاملات..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-10"
-              />
-            </div>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="">جميع الأنواع</option>
-              <option value="income">إيرادات</option>
-              <option value="expense">مصروفات</option>
-              <option value="debt">مديونيات</option>
-            </select>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="">جميع التصنيفات</option>
-              {loadingCategories ? (
-                <option disabled>جاري تحميل التصنيفات...</option>
-              ) : categories.length > 0 ? (
-                categories.map(category => (
-                  <option key={category._id} value={category.name}>{category.name}</option>
-                ))
-              ) : (
-                <option disabled>لا توجد تصنيفات</option>
-              )}
-            </select>
-            <select
-              value={selectedClient}
-              onChange={(e) => setSelectedClient(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="">جميع العملاء</option>
-              <option value="none">عمليات عامة (بدون عميل)</option>
-              {loadingClients ? (
-                <option disabled>جاري تحميل العملاء...</option>
-              ) : clients.length > 0 ? (
-                clients.map(client => (
-                  <option key={client._id} value={client._id}>{client.name}</option>
-                ))
-              ) : (
-                <option disabled>لا توجد عملاء</option>
-              )}
-            </select>
-            <Button
-              variant="outline"
-              className={`gap-2 ${dateFilter.startDate || dateFilter.endDate ? 'bg-blue-50 text-blue-600 border-blue-200' : ''}`}
-              onClick={() => setShowDateFilter(true)}
-            >
-              <Calendar className="w-4 h-4" />
-              {dateFilter.startDate || dateFilter.endDate ? 'تصفية حسب التاريخ' : 'تاريخ محدد'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="relative flex-1 min-w-[200px]">
+          <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input placeholder="البحث في المعاملات..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pr-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-600 h-9 text-sm" />
+        </div>
+        <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="h-9 px-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+          <option value="">كل الأنواع</option>
+          <option value="income">إيرادات</option>
+          <option value="expense">مصروفات</option>
+          <option value="debt">مديونيات</option>
+        </select>
+        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="h-9 px-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="">كل التصنيفات</option>
+          {categories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
+        </select>
+        <select value={selectedClient} onChange={(e) => setSelectedClient(e.target.value)} className="h-9 px-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="">كل العملاء</option>
+          <option value="none">بدون عميل</option>
+          {clients.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+        </select>
+        <button onClick={() => setShowDateFilter(true)} className={`h-9 px-3 text-sm rounded-lg border flex items-center gap-1.5 transition-colors ${dateFilter.startDate || dateFilter.endDate ? 'bg-blue-50 text-blue-600 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+          <Calendar className="w-3.5 h-3.5" />
+          {dateFilter.startDate || dateFilter.endDate ? 'فلتر التاريخ' : 'التاريخ'}
+        </button>
+        {(searchTerm || selectedType || selectedCategory || selectedClient || dateFilter.startDate) && (
+          <button onClick={() => { setSearchTerm(''); setSelectedType(''); setSelectedCategory(''); setSelectedClient(''); setDateFilter({}); }} className="h-9 px-3 text-sm rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-1">
+            <XCircle className="w-3.5 h-3.5" /> مسح
+          </button>
+        )}
+      </div>
 
       {/* قائمة المعاملات */}
       {loading ? (
@@ -1057,58 +746,46 @@ const TransactionsPage = () => {
 
       {/* نموذج إضافة/تعديل المعاملة */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => { setShowAddModal(false); setEditingTransaction(null); }}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-200/50 dark:border-gray-700/50" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b dark:border-gray-700">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  {editingTransaction
+                    ? <span className="text-blue-600 dark:text-blue-400 text-sm">✏️</span>
+                    : <span className="text-blue-600 dark:text-blue-400 text-lg">+</span>
+                  }
+                </div>
                 {editingTransaction ? 'تعديل المعاملة' : 'إضافة معاملة جديدة'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </h2>
+              <button onClick={() => { setShowAddModal(false); setEditingTransaction(null); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                <span className="text-gray-500 text-xl">×</span>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="description">وصف المعاملة</Label>
-                  <Input
-                    id="description"
-                    defaultValue={editingTransaction?.description || ''}
-                    placeholder="وصف تفصيلي للمعاملة"
-                    required
-                  />
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="description" className="text-sm font-medium text-gray-700 dark:text-gray-300">وصف المعاملة</Label>
+                  <Input id="description" defaultValue={editingTransaction?.description || ''} placeholder="وصف تفصيلي للمعاملة" required className="rounded-xl bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amount">المبلغ</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    defaultValue={editingTransaction?.amount || ''}
-                    placeholder="0"
-                    required
-                    min="0"
-                    step="0.01"
-                  />
+                <div className="space-y-1.5">
+                  <Label htmlFor="amount" className="text-sm font-medium text-gray-700 dark:text-gray-300">المبلغ</Label>
+                  <Input id="amount" type="number" defaultValue={editingTransaction?.amount || ''} placeholder="0" required min="0" step="0.01" className="rounded-xl bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type">نوع المعاملة</Label>
-                  <select
-                    id="type"
-                    defaultValue={editingTransaction?.type || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                    required
-                  >
+                <div className="space-y-1.5">
+                  <Label htmlFor="type" className="text-sm font-medium text-gray-700 dark:text-gray-300">نوع المعاملة</Label>
+                  <select id="type" defaultValue={editingTransaction?.type || ''} required
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all">
                     <option value="">اختر النوع</option>
-                    <option value="income">إيرادات</option>
-                    <option value="expense">مصروفات</option>
-                    <option value="debt">مديونيات</option>
+                    <option value="income">💰 إيرادات</option>
+                    <option value="expense">📤 مصروفات</option>
+                    <option value="debt">📋 مديونيات</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">التصنيف</Label>
-                  <select
-                    id="category"
-                    defaultValue={editingTransaction?.category || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                    required
-                  >
+                <div className="space-y-1.5">
+                  <Label htmlFor="category" className="text-sm font-medium text-gray-700 dark:text-gray-300">التصنيف</Label>
+                  <select id="category" defaultValue={editingTransaction?.category || ''} required
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all">
                     <option value="">اختر التصنيف</option>
                     {loadingCategories ? (
                       <option disabled>جاري تحميل التصنيفات...</option>
@@ -1127,22 +804,14 @@ const TransactionsPage = () => {
                     )}
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">التاريخ</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    defaultValue={editingTransaction?.date ? new Date(editingTransaction.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
-                    required
-                  />
+                <div className="space-y-1.5">
+                  <Label htmlFor="date" className="text-sm font-medium text-gray-700 dark:text-gray-300">التاريخ</Label>
+                  <Input id="date" type="date" defaultValue={editingTransaction?.date ? new Date(editingTransaction.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} required className="rounded-xl bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client">العميل (اختياري)</Label>
-                  <select
-                    id="client"
-                    defaultValue={editingTransaction?.clientId || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                  >
+                <div className="space-y-1.5">
+                  <Label htmlFor="client" className="text-sm font-medium text-gray-700 dark:text-gray-300">العميل (اختياري)</Label>
+                  <select id="client" defaultValue={editingTransaction?.clientId || ''}
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all">
                     <option value="">بدون عميل</option>
                     {loadingClients ? (
                       <option disabled>جاري تحميل العملاء...</option>
@@ -1155,31 +824,23 @@ const TransactionsPage = () => {
                     )}
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">طريقة الدفع</Label>
-                  <select
-                    id="paymentMethod"
-                    defaultValue={editingTransaction?.paymentMethod || 'كاش'}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                    required
-                  >
+                <div className="space-y-1.5">
+                  <Label htmlFor="paymentMethod" className="text-sm font-medium text-gray-700 dark:text-gray-300">طريقة الدفع</Label>
+                  <select id="paymentMethod" defaultValue={editingTransaction?.paymentMethod || 'كاش'} required
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all">
                     <option value="كاش">💵 كاش</option>
                     <option value="انستا باي">📱 انستا باي</option>
                     <option value="فودافون كاش">📞 فودافون كاش</option>
                     <option value="تحويل بنكي">🏦 تحويل بنكي</option>
                   </select>
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="notes">ملاحظات</Label>
-                  <Input
-                    id="notes"
-                    defaultValue={editingTransaction?.notes || ''}
-                    placeholder="ملاحظات إضافية (اختياري)"
-                  />
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="notes" className="text-sm font-medium text-gray-700 dark:text-gray-300">ملاحظات</Label>
+                  <Input id="notes" defaultValue={editingTransaction?.notes || ''} placeholder="ملاحظات إضافية (اختياري)" className="rounded-xl bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600" />
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-3 border-t dark:border-gray-700">
                 <Button
                   onClick={async () => {
                     console.log('🎬 بدء معالجة الضغط على زر الإضافة');
@@ -1239,7 +900,7 @@ const TransactionsPage = () => {
                       handleAddTransaction(formData);
                     }
                   }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 gap-2"
                   disabled={loading}
                 >
                   {loading ? (
@@ -1253,17 +914,14 @@ const TransactionsPage = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setEditingTransaction(null);
-                  }}
-                  className="flex-1"
+                  onClick={() => { setShowAddModal(false); setEditingTransaction(null); }}
+                  className="flex-1 rounded-xl"
                 >
                   إلغاء
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1664,64 +1322,31 @@ const TransactionsPage = () => {
         </div>
       )}
 
-      {/* Pagination Controls */}
+      {/* Pagination */}
       {!loading && filteredTransactions.length > 0 && (
-        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 dark:text-gray-400">عناصر في الصفحة:</label>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value))
-                setCurrentPage(1) // Reset to first page when changing items per page
-              }}
-              className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
+        <div className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-gray-500 dark:text-gray-400">{transactions.length} معاملة</span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+              const page = start + i;
+              if (page > totalPages) return null;
+              return (
+                <button key={page} onClick={() => setCurrentPage(page)} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${currentPage === page ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>{page}</button>
+              );
+            })}
+            <button onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2"
-            >
-              السابق
-            </Button>
-
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                value={currentPage}
-                onChange={(e) => {
-                  const page = Number(e.target.value)
-                  if (page > 0 && page <= totalPages) {
-                    setCurrentPage(page)
-                  }
-                }}
-                className="w-16 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
-              <span className="text-gray-600 dark:text-gray-400">من {totalPages}</span>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2"
-            >
-              التالي
-            </Button>
-          </div>
-
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            إجمالي النتائج: {transactions.length}
-          </div>
+          <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="h-8 px-2 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-transparent text-gray-600 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 outline-none">
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
         </div>
       )}
 

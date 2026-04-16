@@ -143,6 +143,7 @@ const ClientsPage = () => {
         industry: clientData.industry,
         status: clientData.status,
         notes: clientData.notes,
+        logoUrl: clientData.logoUrl || null,
         address: {
           street: clientData.addressStreet,
           city: clientData.addressCity,
@@ -182,6 +183,7 @@ const ClientsPage = () => {
         industry: clientData.industry,
         status: clientData.status,
         notes: clientData.notes,
+        logoUrl: clientData.logoUrl || null,
         address: {
           street: clientData.addressStreet,
           city: clientData.addressCity,
@@ -202,7 +204,7 @@ const ClientsPage = () => {
           currency: clientData.currency || "ج.م",
         },
       };
-      await clientService.update(selectedClient._id, payload);
+      await clientService.update(selectedClient._id || selectedClient.id, payload);
       toast.success("تم تحديث بيانات العميل بنجاح");
       fetchClients();
       setShowEditModal(false);
@@ -409,10 +411,13 @@ const ClientsPage = () => {
       </Card>
 
       {/* قائمة العملاء */}
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden border-0 shadow-lg">
+        <CardHeader className="bg-gradient-to-l from-slate-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700 pb-4">
           <CardTitle className="flex items-center justify-between">
-            <span>قائمة العملاء ({filteredClients.length})</span>
+            <span className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              قائمة العملاء ({filteredClients.length})
+            </span>
             <div className="flex space-x-2 rtl:space-x-reverse">
               <Button variant="outline" size="sm">
                 <Download className="w-4 h-4 ml-2" />
@@ -425,211 +430,160 @@ const ClientsPage = () => {
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
-                    <button
-                      onClick={() => {
-                        if (selectedClients.length === filteredClients.length) {
-                          setSelectedClients([]);
-                        } else {
-                          setSelectedClients(filteredClients.map((c) => c.id));
-                        }
-                      }}
-                      className="p-1"
-                    >
-                      {selectedClients.length === filteredClients.length ? (
-                        <CheckSquare className="w-4 h-4 text-blue-600" />
-                      ) : (
-                        <Square className="w-4 h-4 text-gray-400" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
-                    العميل
-                  </th>
-                  {/* <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
-                    النوع
-                  </th> */}
-                  <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
-                    الحالة
-                  </th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
-                    الرصيد
-                  </th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
-                    العمليات
-                  </th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
-                    آخر عملية
-                  </th>
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700 dark:text-gray-300">
-                    الإجراءات
-                  </th>
+                <tr className="bg-gradient-to-l from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-850">
+                  {['', 'العميل', 'الحالة', 'الرصيد', 'المشاريع', 'آخر عملية', ''].map((h, i) => (
+                    <th key={i} className={`px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 ${i <= 1 ? 'text-right' : 'text-center'} whitespace-nowrap`}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody>
-                {filteredClients.map((client) => (
-                  <tr
-                    key={client._id}
-                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    <td className="py-3 px-2 text-center">
-                      <button
-                        onClick={() => {
-                          if (selectedClients.includes(client._id)) {
-                            setSelectedClients(
-                              selectedClients.filter((id) => id !== client._id)
-                            );
-                          } else {
-                            setSelectedClients([
-                              ...selectedClients,
-                              client._id,
-                            ]);
-                          }
-                        }}
-                        className="p-1"
-                      >
-                        {selectedClients.includes(client._id) ? (
-                          <CheckSquare className="w-4 h-4 text-blue-600" />
-                        ) : (
-                          <Square className="w-4 h-4 text-gray-400" />
-                        )}
-                      </button>
-                    </td>
-                    <td className="py-3 px-2">
-                      <div
-                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
-                        // onClick={() => navigate(`/clients/${client._id}`)}
-                      >
-                        <div className="font-medium text-gray-900 dark:text-white hover:text-blue-600">
-                          {client.name}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-1">
-                          <Mail className="w-3 h-3 ml-1" />
-                          {client.email}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                          <Phone className="w-3 h-3 ml-1" />
-                          {client.phone}
-                        </div>
-                      </div>
-                    </td>
-                    {/* <td className="py-3 px-2">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          client.type === "شركة"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                            : client.type === "مؤسسة"
-                            ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
-                            : client.type === "فرد"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300"
-                        }`}
-                      >
-                        {client.type}
-                      </span>
-                    </td> */}
-                    <td className="py-3 px-2">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          client.status === "نشط"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : client.status === "معلق"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                        }`}
-                      >
-                        {client.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2">
-                      <div
-                        className={`font-medium ${
-                          client.currentBalance >= 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}
-                      >
-                        {formatCurrency(Math.abs(client.currentBalance) || 0)}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {client.currentBalance >= 0 ? "له علينا" : "عليه لنا"}
-                      </div>
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="font-medium text-gray-900 dark:text-white">
-                        {client.totalTransactions}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        عملية
-                      </div>
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {client.lastTransaction
-                          ? formatDate(client.lastTransaction)
-                          : "لا توجد"}
-                      </div>
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="flex justify-center space-x-1 rtl:space-x-reverse">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewDetails(client)}
-                          className="h-8 w-8 !p-0"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedClient(client);
-                            setMessageType("single");
-                            setShowMessageModal(true);
-                          }}
-                          className="h-8 w-8 !p-0 text-green-600 hover:text-green-700"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedClient(client);
-                            setShowEditModal(true);
-                          }}
-                          className="h-8 w-8 !p-0"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteClient(client._id)}
-                          className="h-8 w-8 !p-0 text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {filteredClients.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-16 text-gray-400 dark:text-gray-500">
+                      <Users className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                      <p className="text-lg font-medium">لا توجد عملاء مطابقة للبحث</p>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredClients.map((client, index) => (
+                    <tr
+                      key={client._id || client.id}
+                      className={`group hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-200 cursor-pointer ${index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/30'}`}
+                      onClick={() => handleViewDetails(client)}
+                    >
+                      {/* Checkbox */}
+                      <td className="py-4 px-5 w-10">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (selectedClients.includes(client._id || client.id)) {
+                              setSelectedClients(selectedClients.filter((id) => id !== (client._id || client.id)));
+                            } else {
+                              setSelectedClients([...selectedClients, client._id || client.id]);
+                            }
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          {selectedClients.includes(client._id || client.id) ? (
+                            <CheckSquare className="w-4 h-4 text-blue-600" />
+                          ) : (
+                            <Square className="w-4 h-4 text-gray-400" />
+                          )}
+                        </button>
+                      </td>
+                      {/* Client Info */}
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0">
+                            {client.name?.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm">{client.name}</p>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                <Mail className="w-3 h-3" /> {client.email || '-'}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 font-mono">
+                                <Phone className="w-3 h-3" /> {client.phone}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      {/* Status */}
+                      <td className="py-4 px-5 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          client.status === 'active' || client.status === 'نشط'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : client.status === 'potential'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                            : client.status === 'معلق' || client.status === 'inactive'
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ml-1.5 ${
+                            client.status === 'active' || client.status === 'نشط' ? 'bg-green-500' : client.status === 'potential' ? 'bg-blue-500' : 'bg-yellow-500'
+                          }`} />
+                          {client.status === 'active' ? 'نشط' : client.status === 'potential' ? 'محتمل' : client.status}
+                        </span>
+                      </td>
+                      {/* Balance */}
+                      <td className="py-4 px-5 text-center">
+                        <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold font-mono ${
+                          (client.currentBalance || 0) > 0
+                            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                            : (client.currentBalance || 0) < 0
+                            ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                            : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                        }`}>
+                          <DollarSign className="w-3 h-3" />
+                          {new Intl.NumberFormat('en-US').format(Math.abs(client.currentBalance || 0))} EGP
+                        </div>
+                      </td>
+                      {/* Projects */}
+                      <td className="py-4 px-5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs font-semibold font-mono">
+                            {client.totalProjects || 0}
+                          </span>
+                          {(client.activeProjects || 0) > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400">
+                              {client.activeProjects} نشط
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {/* Last Activity */}
+                      <td className="py-4 px-5 text-center">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                          {client.lastPaymentDate ? new Date(client.lastPaymentDate).toLocaleDateString('en-GB') : '—'}
+                        </span>
+                      </td>
+                      {/* Actions */}
+                      <td className="py-4 px-5 text-center">
+                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleViewDetails(client); }}
+                            className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                            title="عرض التفاصيل"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setShowEditModal(true); }}
+                            className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            title="تعديل"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setMessageType("single"); setShowMessageModal(true); }}
+                            className="p-2 rounded-lg text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                            title="رسالة"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteClient(client._id || client.id); }}
+                            className="p-2 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                            title="حذف"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-
-          {filteredClients.length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <Users className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-              <p>لا توجد عملاء مطابقة للبحث</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -707,7 +661,27 @@ const ClientModal = ({ title, client, onSave, onClose }) => {
     paymentTerms: client?.paymentTerms || "30",
     taxNumber: client?.taxNumber || "",
     currency: client?.currency || "ج.م",
+    logoUrl: client?.logoUrl || "",
   });
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('field', 'client_logo');
+    try {
+      const token = localStorage.getItem('token');
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+      const res = await fetch(backendUrl + '/api/company-settings/upload', {
+        method: 'POST', body: fd, headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFormData(prev => ({ ...prev, logoUrl: backendUrl + data.data.url }));
+      }
+    } catch (err) { console.error('Upload error:', err); }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -727,6 +701,25 @@ const ClientModal = ({ title, client, onSave, onClose }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* لوجو العميل */}
+          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">لوجو العميل / الشركة</label>
+            <div className="flex items-center gap-4">
+              {formData.logoUrl ? (
+                <img src={formData.logoUrl} alt="logo" className="w-16 h-16 object-contain rounded-lg border border-gray-200 dark:border-gray-600 bg-white p-1" onError={(e) => { e.target.style.display = 'none' }} />
+              ) : (
+                <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-400 text-xs">لا يوجد</div>
+              )}
+              <div className="flex-1 flex gap-2">
+                <input type="url" placeholder="رابط اللوجو أو ارفع من جهازك" value={formData.logoUrl} onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })} dir="ltr" className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                <label className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg cursor-pointer hover:bg-blue-700 transition-colors whitespace-nowrap flex items-center gap-1">
+                  رفع ملف
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                </label>
+              </div>
+            </div>
+          </div>
+
           {/* المعلومات الأساسية */}
           <div>
             <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4">
@@ -1183,11 +1176,11 @@ const ClientDetailsModal = ({ client, onClose }) => {
                   <Phone className="w-4 h-4 ml-1" /> {client.phone}
                 </p>
                 <p className="flex items-center">
-                  <MapPin className="w-4 h-4 ml-1" /> {client.address}
+                  <MapPin className="w-4 h-4 ml-1" /> {typeof client.address === 'object' ? [client.address?.street, client.address?.city, client.address?.governorate].filter(Boolean).join(' - ') : (client.address || 'غير محدد')}
                 </p>
                 <p>
                   <span className="font-medium">المسؤول:</span>{" "}
-                  {client.contactPerson}
+                  {typeof client.contactPerson === 'object' ? (client.contactPerson?.name || 'غير محدد') : (client.contactPerson || 'غير محدد')}
                 </p>
               </div>
             </div>

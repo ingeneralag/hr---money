@@ -1,47 +1,35 @@
-// إعادة تفعيل الاتصال بقاعدة البيانات
-const mongoose = require('mongoose');
+// Supabase Database Connection
+const { createClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.SUPABASE_URL || 'https://synasjednemnpcxkhpuj.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
+
+if (!supabaseServiceKey) {
+  console.warn('⚠️ SUPABASE_SERVICE_KEY is not set. Please set it in your .env file.');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
 
 const connectDB = async () => {
   try {
-    // تأكد من وجود MONGODB_URI أو استخدم القيمة الافتراضية
-    const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://hrsystem:jwXNDn8DnwxDnCbk@hr-system.veyoe3q.mongodb.net/test';
-
-    console.log('🔗 محاولة الاتصال بـ MongoDB Atlas...');
-    const conn = await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000,
-    });
-
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log(`📊 Database Name: ${conn.connection.name}`);
-
-    return conn;
+    console.log('🔗 Connecting to Supabase...');
+    // Test connection
+    const { data, error } = await supabase.from('users').select('id').limit(1);
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    console.log('✅ Supabase Connected Successfully');
+    console.log(`📊 Project URL: ${supabaseUrl}`);
+    return supabase;
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
-    console.error('🔗 Connection string:', process.env.MONGODB_URI ? 'Available' : 'Missing');
-    process.exit(1);
+    console.error('❌ Supabase connection error:', error.message);
+    throw error;
   }
 };
 
-// معالجة أحداث الاتصال
-mongoose.connection.on('connected', () => {
-  console.log('🔗 Mongoose connected to MongoDB Atlas');
-});
-
-mongoose.connection.on('error', (err) => {
-  console.error('❌ Mongoose connection error:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('🔌 Mongoose disconnected from MongoDB Atlas');
-});
-
-// إغلاق الاتصال عند إيقاف التطبيق
-process.on('SIGINT', async () => {
-  console.log('🔒 إغلاق اتصال MongoDB Atlas...');
-  await mongoose.connection.close();
-  process.exit(0);
-});
-
-module.exports = connectDB; 
+module.exports = { connectDB, supabase };

@@ -219,96 +219,60 @@ const SystemLogsPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-5 max-w-[1600px] mx-auto">
       {/* العنوان */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            لوجات النظام
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            تتبع جميع العمليات والأنشطة في النظام
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={fetchLogs} variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
+      <div className="bg-gradient-to-r from-slate-50 via-white to-gray-50 dark:from-gray-800/90 dark:via-gray-800/70 dark:to-gray-800/90 rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-200/50 dark:border-gray-600/50">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 to-gray-600 dark:from-slate-300 dark:to-gray-400 bg-clip-text text-transparent flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 flex items-center justify-center shadow-lg shadow-gray-500/25">
+                <Activity className="w-5 h-5 text-white" />
+              </div>
+              لوجات النظام
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm mr-[52px]">تتبع جميع العمليات والأنشطة في النظام</p>
+          </div>
+          <Button onClick={fetchLogs} variant="outline"
+            className="gap-2 rounded-xl border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
+            <RefreshCw className="w-4 h-4 text-blue-500" />
             تحديث
           </Button>
         </div>
       </div>
 
       {/* الإحصائيات */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">إجمالي اللوجات</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.totalLogs.toLocaleString()}
-                </p>
-              </div>
-              <Activity className="w-8 h-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">عمليات ناجحة</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {stats.successCount.toLocaleString()}
-                </p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">عمليات فاشلة</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {stats.failedCount.toLocaleString()}
-                </p>
-              </div>
-              <XCircle className="w-8 h-8 text-red-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">أهمية عالية</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {stats.highSeverityCount.toLocaleString()}
-                </p>
-              </div>
-              <AlertTriangle className="w-8 h-8 text-orange-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">حرجة</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {stats.criticalSeverityCount.toLocaleString()}
-                </p>
-              </div>
-              <AlertTriangle className="w-8 h-8 text-red-600" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {[
+          { label: 'إجمالي اللوجات', value: stats.totalLogs, icon: Activity, color: 'blue' },
+          { label: 'عمليات ناجحة', value: stats.successCount, icon: CheckCircle, color: 'green' },
+          { label: 'عمليات فاشلة', value: stats.failedCount, icon: XCircle, color: 'red' },
+          { label: 'أهمية عالية', value: stats.highSeverityCount, icon: AlertTriangle, color: 'orange' },
+          { label: 'حرجة', value: stats.criticalSeverityCount, icon: AlertTriangle, color: 'rose' },
+        ].map((s, i) => {
+          const colorMap = {
+            blue: 'from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 text-blue-600 dark:text-blue-400',
+            green: 'from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/10 text-green-600 dark:text-green-400',
+            red: 'from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/10 text-red-600 dark:text-red-400',
+            orange: 'from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-800/10 text-orange-600 dark:text-orange-400',
+            rose: 'from-rose-50 to-rose-100/50 dark:from-rose-900/20 dark:to-rose-800/10 text-rose-600 dark:text-rose-400',
+          }
+          const IconComp = s.icon
+          return (
+            <Card key={i} className={`bg-gradient-to-br ${colorMap[s.color].split(' ').slice(0,4).join(' ')} border border-gray-200/60 dark:border-gray-700/60 rounded-xl overflow-hidden`}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{s.label}</p>
+                    <p className={`text-2xl font-bold mt-1 ${colorMap[s.color].split(' ').slice(4).join(' ')}`}>{s.value.toLocaleString()}</p>
+                  </div>
+                  <div className={`p-2.5 rounded-xl bg-white/60 dark:bg-gray-800/40`}>
+                    <IconComp className={`w-6 h-6 ${colorMap[s.color].split(' ').slice(4).join(' ')}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {/* فلاتر البحث */}

@@ -3,9 +3,7 @@ const router = express.Router();
 const { transactionValidation } = require("../middleware/validation");
 const sendError = require("../utils/sendError");
 const { requireAuth, requireRole } = require("../middleware/auth");
-const Transaction = require("../models/Transaction");
-const Employee = require("../models/Employee");
-const Client = require("../models/Client");
+const { supabase } = require('../config/database');
 const {
   logTransactionCreation,
   logTransactionUpdate,
@@ -13,7 +11,40 @@ const {
   logDebtPayment
 } = require("../middleware/logging");
 
-// تم حذف البيانات الوهمية - النظام يعرض البيانات الحقيقية من قاعدة البيانات فقط
+// Helper: map snake_case transaction to camelCase for frontend
+function mapTransaction(t) {
+  if (!t) return t;
+  return {
+    ...t,
+    _id: t.id,
+    transactionNumber: t.transaction_number,
+    paymentMethod: t.payment_method,
+    paymentStatus: t.payment_status,
+    debtStatus: t.debt_status,
+    paidAmount: t.paid_amount,
+    remainingAmount: t.remaining_amount,
+    totalFeesCollected: t.total_fees_collected,
+    clientId: t.client_id,
+    employeeId: t.employee_id,
+    projectId: t.project_id,
+    departmentId: t.department_id,
+    dueDate: t.due_date,
+    invoiceNumber: t.invoice_number,
+    taxRate: t.tax_rate,
+    taxAmount: t.tax_amount,
+    taxIncluded: t.tax_included,
+    isRecurring: t.is_recurring,
+    createdBy: t.created_by_name || 'مدير النظام',
+    updatedBy: t.updated_by,
+    approvedBy: t.approved_by,
+    approvedAt: t.approved_at,
+    rejectedBy: t.rejected_by,
+    rejectionReason: t.rejection_reason,
+    rejectedAt: t.rejected_at,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+  };
+}
 
 // GET all transactions (with filtering, search, pagination)
 router.get("/", async (req, res) => {
@@ -21,107 +52,94 @@ router.get("/", async (req, res) => {
     try {
       // Pagination, status, and date filters
       const { page = 1, limit = 10000, status, startDate, endDate, type, category, search, client } = req.query;
-      const query = {};
+
+      // Build Supabase query for count and data
+      let query = supabase.from('transactions').select('*', { count: 'exact' });
 
       // Status filter
       if (status) {
-        query.status = status;
+        query = query.eq('status', status);
       }
 
       // Date range filter
-      if (startDate || endDate) {
-        query.date = {};
-        if (startDate) {
-          query.date.$gte = new Date(startDate);
-        }
-        if (endDate) {
-          query.date.$lte = new Date(endDate);
-        }
+      if (startDate) {
+        query = query.gte('date', new Date(startDate).toISOString());
+      }
+      if (endDate) {
+        query = query.lte('date', new Date(endDate).toISOString());
       }
 
       // Type filter
       if (type) {
-        query.type = type;
+        query = query.eq('type', type);
       }
 
       // Category filter
       if (category) {
-        query.category = category;
+        query = query.eq('category', category);
       }
 
       // Client filter
       if (client && client !== 'none') {
-        query.clientId = client;
+        query = query.eq('client_id', client);
       } else if (client === 'none') {
-        query.clientId = null;
+        query = query.is('client_id', null);
       }
 
       // Search filter
       if (search) {
-        query.$or = [
-          { description: { $regex: search, $options: 'i' } },
-          { reference: { $regex: search, $options: 'i' } },
-          { category: { $regex: search, $options: 'i' } }
-        ];
+        query = query.or(`description.ilike.%${search}%,reference.ilike.%${search}%,category.ilike.%${search}%`);
       }
-
-      // First get total count of all documents
-      const totalCount = await Transaction.countDocuments(query);
 
       // Calculate pagination
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
-      const totalPages = Math.ceil(totalCount / limitNum);
+      const offset = (pageNum - 1) * limitNum;
 
       // Get paginated results
-      const transactions = await Transaction.find(query)
-        .sort({ date: -1 })
-        .skip((pageNum - 1) * limitNum)
-        .limit(limitNum);
+      query = query.order('date', { ascending: false })
+        .range(offset, offset + limitNum - 1);
 
-      // عرض البيانات الحقيقية من قاعدة البيانات فقط - لا توجد بيانات وهمية
+      const { data: transactions, error, count: totalCount } = await query;
 
-      // حساب الملخص من البيانات الحقيقية
-      const totalIncome = transactions
-        .filter((t) => t.type === "income")
-        .reduce((sum, t) => sum + t.amount, 0);
+      if (error) throw error;
 
-      const totalExpense = transactions
-        .filter((t) => t.type === "expense")
-        .reduce((sum, t) => sum + t.amount, 0);
+      // Build a separate query for the full summary (not just current page)
+      let summaryQuery = supabase.from('transactions').select('type, amount, paid_amount, total_fees_collected');
 
-      // حساب المديونيات
-      const totalDebts = transactions
-        .filter((t) => t.type === "debt")
-        .reduce((sum, t) => sum + t.amount, 0);
+      if (status) summaryQuery = summaryQuery.eq('status', status);
+      if (startDate) summaryQuery = summaryQuery.gte('date', new Date(startDate).toISOString());
+      if (endDate) summaryQuery = summaryQuery.lte('date', new Date(endDate).toISOString());
+      if (type) summaryQuery = summaryQuery.eq('type', type);
+      if (category) summaryQuery = summaryQuery.eq('category', category);
+      if (client && client !== 'none') {
+        summaryQuery = summaryQuery.eq('client_id', client);
+      } else if (client === 'none') {
+        summaryQuery = summaryQuery.is('client_id', null);
+      }
+      if (search) {
+        summaryQuery = summaryQuery.or(`description.ilike.%${search}%,reference.ilike.%${search}%,category.ilike.%${search}%`);
+      }
 
-      const paidDebts = transactions
-        .filter((t) => t.type === "debt")
-        .reduce((sum, t) => sum + (t.paidAmount || 0), 0);
+      const { data: allTransactions, error: summaryError } = await summaryQuery;
+      if (summaryError) throw summaryError;
 
-      const remainingDebts = totalDebts - paidDebts;
-
-      // حساب الرسوم المحصلة من المديونيات (مكسب صافي)
-      const totalFeesCollected = transactions
-        .filter((t) => t.type === "debt")
-        .reduce((sum, t) => sum + (t.totalFeesCollected || 0), 0);
-
-      // Get total summary (not just for current page)
-      const allTransactions = await Transaction.find(query);
       const totalSummary = {
         totalIncome: allTransactions.filter((t) => t.type === "income").reduce((sum, t) => sum + t.amount, 0),
         totalExpense: allTransactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + t.amount, 0),
         totalDebts: allTransactions.filter((t) => t.type === "debt").reduce((sum, t) => sum + t.amount, 0),
-        paidDebts: allTransactions.filter((t) => t.type === "debt").reduce((sum, t) => sum + (t.paidAmount || 0), 0),
-        totalFeesCollected: allTransactions.filter((t) => t.type === "debt").reduce((sum, t) => sum + (t.totalFeesCollected || 0), 0),
+        paidDebts: allTransactions.filter((t) => t.type === "debt").reduce((sum, t) => sum + (t.paid_amount || 0), 0),
+        totalFeesCollected: allTransactions.filter((t) => t.type === "debt").reduce((sum, t) => sum + (t.total_fees_collected || 0), 0),
       };
 
       totalSummary.remainingDebts = totalSummary.totalDebts - totalSummary.paidDebts;
       totalSummary.netAmount = totalSummary.totalIncome - totalSummary.totalExpense + totalSummary.totalFeesCollected;
 
+      const totalPages = Math.ceil(totalCount / limitNum);
+
       res.json({
         success: true,
-        data: transactions,
+        data: (transactions || []).map(mapTransaction),
         summary: totalSummary,
         pagination: {
           total: totalCount,
@@ -131,9 +149,8 @@ router.get("/", async (req, res) => {
         },
       });
     } catch (dbError) {
-      console.error("❌ قاعدة البيانات غير متاحة:", dbError.message);
+      console.error("قاعدة البيانات غير متاحة:", dbError.message);
 
-      // في حالة عدم توفر قاعدة البيانات، إرجاع خطأ - لا بيانات وهمية
       return res.status(500).json({
         success: false,
         message: "خطأ في الاتصال بقاعدة البيانات",
@@ -155,28 +172,86 @@ router.post("/", requireAuth, transactionValidation, logTransactionCreation, asy
   try {
     // تحقق من وجود clientId وemployeeId
     if (req.body.clientId) {
-      const client = await Client.findById(req.body.clientId);
-      if (!client)
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('id', req.body.clientId)
+        .single();
+      if (clientError || !client)
         return sendError(res, 400, "العميل غير موجود", "VALIDATION_ERROR");
     }
     if (req.body.employeeId) {
-      const emp = await Employee.findById(req.body.employeeId);
-      if (!emp)
+      const { data: emp, error: empError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('id', req.body.employeeId)
+        .single();
+      if (empError || !emp)
         return sendError(res, 400, "الموظف غير موجود", "VALIDATION_ERROR");
     }
-    // إذا كان المستخدم محاسب، ضع المعاملة في حالة 'pending'
-    const status = req.user.role === "accountant" ? "pending" : "approved";
-    const newTxn = new Transaction({
-      ...req.body,
+    // المدير (admin) → approved مباشرة | المحاسب وأي role تاني → pending تحتاج موافقة
+    const isAdmin = req.user.role === "admin";
+    const isAutoPayroll = req.body._source === "auto_payroll";
+    const status = (isAdmin && !isAutoPayroll) ? "approved" : "pending";
+
+    // Auto-generate transaction number
+    const { data: lastTxn } = await supabase
+      .from('transactions')
+      .select('transaction_number')
+      .not('transaction_number', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    let nextNum = 1;
+    if (lastTxn?.transaction_number) {
+      const match = lastTxn.transaction_number.match(/(\d+)$/);
+      if (match) nextNum = parseInt(match[1]) + 1;
+    }
+    const year = new Date().getFullYear();
+    const transactionNumber = `TXN-${year}-${String(nextNum).padStart(3, '0')}`;
+
+    const insertData = {
+      transaction_number: transactionNumber,
+      type: req.body.type,
+      amount: req.body.amount,
+      currency: req.body.currency || 'EGP',
+      description: req.body.description,
+      category: req.body.category,
+      subcategory: req.body.subcategory,
+      date: req.body.date || new Date().toISOString(),
+      due_date: req.body.dueDate || req.body.due_date || null,
       status,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    await newTxn.save();
+      payment_method: req.body.paymentMethod || req.body.payment_method || null,
+      payment_status: req.body.paymentStatus || req.body.payment_status || 'pending',
+      debt_status: req.body.debtStatus || req.body.debt_status || null,
+      paid_amount: req.body.paidAmount || req.body.paid_amount || 0,
+      remaining_amount: req.body.remainingAmount || req.body.remaining_amount || (req.body.type === 'debt' ? req.body.amount : 0),
+      client_id: req.body.clientId || req.body.client_id || null,
+      employee_id: req.body.employeeId || req.body.employee_id || null,
+      project_id: req.body.projectId || req.body.project_id || null,
+      department_id: req.body.departmentId || req.body.department_id || null,
+      invoice_number: req.body.invoiceNumber || req.body.invoice_number || null,
+      tax_rate: req.body.taxRate || req.body.tax_rate || 0,
+      tax_amount: req.body.taxAmount || req.body.tax_amount || 0,
+      reference: req.body.reference || null,
+      tags: req.body.tags || [],
+      notes: req.body.notes || null,
+      created_by: req.user?.id || null,
+    };
+
+    const { data: newTxn, error } = await supabase
+      .from('transactions')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
     res.json({
       success: true,
       message: "تم إضافة المعاملة بنجاح",
-      data: newTxn,
+      data: mapTransaction(newTxn),
     });
   } catch (err) {
     sendError(
@@ -190,18 +265,23 @@ router.post("/", requireAuth, transactionValidation, logTransactionCreation, asy
 });
 
 // PUT update transaction (now allows 'manager' role to approve/reject transactions)
-router.put("/:id", requireAuth, transactionValidation, async (req, res) => {
+router.put("/:id", requireAuth, async (req, res) => {
   try {
-    console.log("🔄 Transaction update request:", {
+    console.log("Transaction update request:", {
       id: req.params.id,
       body: req.body,
       user: req.user?.username || "unknown",
     });
 
     // التحقق من وجود المعاملة أولاً
-    const existingTransaction = await Transaction.findById(req.params.id);
-    if (!existingTransaction) {
-      console.log("❌ Transaction not found:", req.params.id);
+    const { data: existingTransaction, error: findError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (findError || !existingTransaction) {
+      console.log("Transaction not found:", req.params.id);
       return sendError(res, 404, "المعاملة غير موجودة", "NOT_FOUND");
     }
 
@@ -211,9 +291,13 @@ router.put("/:id", requireAuth, transactionValidation, async (req, res) => {
       req.body.clientId !== "" &&
       req.body.clientId !== "null"
     ) {
-      const client = await Client.findById(req.body.clientId);
-      if (!client) {
-        console.log("❌ Client not found:", req.body.clientId);
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('id', req.body.clientId)
+        .single();
+      if (clientError || !client) {
+        console.log("Client not found:", req.body.clientId);
         return sendError(res, 400, "العميل غير موجود", "VALIDATION_ERROR");
       }
     }
@@ -224,41 +308,72 @@ router.put("/:id", requireAuth, transactionValidation, async (req, res) => {
       req.body.employeeId !== "" &&
       req.body.employeeId !== "null"
     ) {
-      const emp = await Employee.findById(req.body.employeeId);
-      if (!emp) {
-        console.log("❌ Employee not found:", req.body.employeeId);
+      const { data: emp, error: empError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('id', req.body.employeeId)
+        .single();
+      if (empError || !emp) {
+        console.log("Employee not found:", req.body.employeeId);
         return sendError(res, 400, "الموظف غير موجود", "VALIDATION_ERROR");
       }
     }
 
     // تنظيف البيانات
-    const updateData = {
-      ...req.body,
-      clientId:
-        req.body.clientId === "" || req.body.clientId === "null"
-          ? null
-          : req.body.clientId,
-      employeeId:
-        req.body.employeeId === "" || req.body.employeeId === "null"
-          ? null
-          : req.body.employeeId,
-      updatedAt: new Date(),
-    };
+    const updateData = {};
+    if (req.body.type) updateData.type = req.body.type;
+    if (req.body.status) updateData.status = req.body.status;
+    if (req.body.amount !== undefined) updateData.amount = req.body.amount;
+    if (req.body.description !== undefined) updateData.description = req.body.description;
+    if (req.body.category !== undefined) updateData.category = req.body.category;
+    if (req.body.subcategory !== undefined) updateData.subcategory = req.body.subcategory;
+    if (req.body.date) updateData.date = req.body.date;
+    if (req.body.dueDate || req.body.due_date) updateData.due_date = req.body.dueDate || req.body.due_date;
+    if (req.body.paymentMethod || req.body.payment_method) updateData.payment_method = req.body.paymentMethod || req.body.payment_method;
+    if (req.body.paymentStatus || req.body.payment_status) updateData.payment_status = req.body.paymentStatus || req.body.payment_status;
+    if (req.body.currency) updateData.currency = req.body.currency;
+    if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+    if (req.body.reference !== undefined) updateData.reference = req.body.reference;
+    if (req.body.tags) updateData.tags = req.body.tags;
+    // Approval/Rejection fields
+    if (req.body.approvedBy || req.body.approved_by) updateData.approved_by = req.user?.id || null;
+    if (req.body.approvedAt || req.body.approved_at) updateData.approved_at = req.body.approvedAt || req.body.approved_at;
+    if (req.body.rejectedBy || req.body.rejected_by) updateData.rejected_by = req.user?.id || null;
+    if (req.body.rejectionReason || req.body.rejection_reason) updateData.rejection_reason = req.body.rejectionReason || req.body.rejection_reason;
+    if (req.body.rejectedAt || req.body.rejected_at) updateData.rejected_at = req.body.rejectedAt || req.body.rejected_at;
+    updateData.client_id = (req.body.clientId === "" || req.body.clientId === "null") ? null : (req.body.clientId || req.body.client_id || null);
+    updateData.employee_id = (req.body.employeeId === "" || req.body.employeeId === "null") ? null : (req.body.employeeId || req.body.employee_id || null);
+    updateData.updated_by = req.user?.id || null;
 
-    console.log("🔄 Cleaned update data:", updateData);
+    console.log("Cleaned update data:", updateData);
 
-    const txn = await Transaction.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    const { data: txn, error: updateError } = await supabase
+      .from('transactions')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .select()
+      .single();
 
-    console.log("✅ Transaction updated successfully:", txn);
+    if (updateError) throw updateError;
+
+    // Save approval/rejection to audit trail
+    if (req.body.status === 'approved' || req.body.status === 'rejected') {
+      await supabase.from('transaction_approvals').insert({
+        transaction_id: req.params.id,
+        action: req.body.status,
+        approved_by: req.user?.id || null,
+        comment: req.body.rejectionReason || req.body.rejection_reason || null,
+        date: new Date().toISOString(),
+      });
+    }
+
+    console.log("Transaction updated successfully:", txn);
 
     // تسجيل العملية في اللوجات
     const { logAction } = require('../middleware/logging');
     const description = `تم تحديث معاملة: ${txn.description} - ${txn.amount} جنيه`;
 
-    console.log('📝 تسجيل تحديث معاملة:', description);
+    console.log('تسجيل تحديث معاملة:', description);
 
     await logAction(req, 'transaction_updated', description, {
       transactionId: req.params.id,
@@ -269,9 +384,9 @@ router.put("/:id", requireAuth, transactionValidation, async (req, res) => {
       oldDescription: existingTransaction?.description
     });
 
-    res.json({ success: true, message: "تم تحديث المعاملة بنجاح", data: txn });
+    res.json({ success: true, message: "تم تحديث المعاملة بنجاح", data: mapTransaction(txn) });
   } catch (err) {
-    console.error("❌ Transaction update error:", err);
+    console.error("Transaction update error:", err);
     sendError(
       res,
       400,
@@ -285,20 +400,42 @@ router.put("/:id", requireAuth, transactionValidation, async (req, res) => {
 // DELETE transaction (allow all authenticated users to delete)
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
-    console.log('🗑️ محاولة حذف معاملة:', req.params.id);
+    console.log('محاولة حذف معاملة:', req.params.id);
 
     // جلب تفاصيل المعاملة قبل الحذف
-    const txn = await Transaction.findById(req.params.id);
-    if (!txn) return sendError(res, 404, "المعاملة غير موجودة", "NOT_FOUND");
+    const { data: txn, error: findError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (findError || !txn) return sendError(res, 404, "المعاملة غير موجودة", "NOT_FOUND");
+
+    // Delete related payment records first
+    await supabase
+      .from('transaction_payments')
+      .delete()
+      .eq('transaction_id', req.params.id);
+
+    // Delete related approval records
+    await supabase
+      .from('transaction_approvals')
+      .delete()
+      .eq('transaction_id', req.params.id);
 
     // حذف المعاملة
-    await Transaction.findByIdAndDelete(req.params.id);
+    const { error: deleteError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (deleteError) throw deleteError;
 
     // تسجيل العملية في اللوجات
     const { logAction } = require('../middleware/logging');
     const description = `تم حذف معاملة: ${txn.description} - ${txn.amount} جنيه`;
 
-    console.log('📝 تسجيل حذف معاملة:', description);
+    console.log('تسجيل حذف معاملة:', description);
 
     await logAction(req, 'transaction_deleted', description, {
       transactionId: req.params.id,
@@ -307,10 +444,10 @@ router.delete("/:id", requireAuth, async (req, res) => {
       description: txn.description
     });
 
-    console.log('✅ تم حذف المعاملة بنجاح:', txn._id);
+    console.log('تم حذف المعاملة بنجاح:', txn.id);
     res.json({ success: true, message: "تم حذف المعاملة بنجاح" });
   } catch (err) {
-    console.log('❌ خطأ في حذف المعاملة:', err.message);
+    console.log('خطأ في حذف المعاملة:', err.message);
     sendError(res, 400, "خطأ في حذف المعاملة", "VALIDATION_ERROR", err.message);
   }
 });
@@ -318,15 +455,17 @@ router.delete("/:id", requireAuth, async (req, res) => {
 // GET recent transactions (last 10)
 router.get("/recent", async (req, res) => {
   try {
-    const recentTransactions = await Transaction.find()
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .populate("clientId", "name")
-      .populate("employeeId", "name");
+    const { data: recentTransactions, error } = await supabase
+      .from('transactions')
+      .select('*, clients:client_id(name), employees:employee_id(name)')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
 
     res.json({
       success: true,
-      data: recentTransactions,
+      data: (recentTransactions || []).map(mapTransaction),
     });
   } catch (error) {
     console.error("خطأ في جلب المعاملات الحديثة:", error);
@@ -347,8 +486,13 @@ router.post("/:id/pay", requireAuth, logDebtPayment, async (req, res) => {
       return sendError(res, 400, "المبلغ المدفوع يجب أن يكون أكبر من صفر", "VALIDATION_ERROR");
     }
 
-    const transaction = await Transaction.findById(req.params.id);
-    if (!transaction) {
+    const { data: transaction, error: findError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (findError || !transaction) {
       return sendError(res, 404, "المعاملة غير موجودة", "NOT_FOUND");
     }
 
@@ -360,9 +504,17 @@ router.post("/:id/pay", requireAuth, logDebtPayment, async (req, res) => {
     const paymentFees = parseFloat(fees) || 0;
     const paymentTotal = totalAmount || (parseFloat(amount) + paymentFees);
 
+    // Get existing payments from transaction_payments table
+    const { data: existingPayments, error: paymentsError } = await supabase
+      .from('transaction_payments')
+      .select('amount')
+      .eq('transaction_id', req.params.id);
+
+    if (paymentsError) throw paymentsError;
+
     // حساب المبلغ المدفوع للمديونية فقط (بدون الرسوم)
-    const currentPaidForDebt = transaction.paymentHistory.reduce((total, payment) => {
-      return total + payment.amount; // فقط المبلغ الأساسي
+    const currentPaidForDebt = (existingPayments || []).reduce((total, payment) => {
+      return total + payment.amount;
     }, 0);
 
     const newPaidForDebt = currentPaidForDebt + parseFloat(amount);
@@ -372,32 +524,64 @@ router.post("/:id/pay", requireAuth, logDebtPayment, async (req, res) => {
       return sendError(res, 400, "المبلغ المدفوع للمديونية أكبر من المبلغ المستحق", "VALIDATION_ERROR");
     }
 
-    // إضافة سجل الدفع
+    // إضافة سجل الدفع في جدول transaction_payments
     const paymentRecord = {
+      transaction_id: req.params.id,
       amount: parseFloat(amount),
       fees: paymentFees,
-      totalAmount: paymentTotal,
-      paymentDate: new Date(),
-      paymentMethod: paymentMethod || 'كاش',
+      total_amount: paymentTotal,
+      payment_date: new Date().toISOString(),
+      payment_method: paymentMethod || 'كاش',
       notes: notes || '',
-      paidBy: req.user.username || req.user.name || 'مستخدم غير معروف'
+      paid_by: req.user.username || req.user.name || 'مستخدم غير معروف',
+      created_at: new Date().toISOString(),
     };
 
-    transaction.paymentHistory = transaction.paymentHistory || [];
-    transaction.paymentHistory.push(paymentRecord);
+    const { data: insertedPayment, error: insertError } = await supabase
+      .from('transaction_payments')
+      .insert(paymentRecord)
+      .select()
+      .single();
 
-    // تحديث المبلغ المدفوع للمديونية فقط (بدون الرسوم)
-    transaction.paidAmount = newPaidForDebt;
+    if (insertError) throw insertError;
 
-    await transaction.save();
+    // تحديث المبلغ المدفوع في المعاملة
+    // Calculate total fees collected
+    const { data: allPayments } = await supabase
+      .from('transaction_payments')
+      .select('fees')
+      .eq('transaction_id', req.params.id);
+
+    const totalFeesCollected = (allPayments || []).reduce((sum, p) => sum + (p.fees || 0), 0);
+
+    // Determine debt status
+    const remainingAmount = transaction.amount - newPaidForDebt;
+    let debtStatus = 'unpaid';
+    if (remainingAmount <= 0) debtStatus = 'paid';
+    else if (newPaidForDebt > 0) debtStatus = 'partial';
+
+    const { data: updatedTransaction, error: updateError } = await supabase
+      .from('transactions')
+      .update({
+        paid_amount: newPaidForDebt,
+        remaining_amount: remainingAmount,
+        total_fees_collected: totalFeesCollected,
+        debt_status: debtStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
 
     res.json({
       success: true,
       message: "تم تسجيل الدفع بنجاح",
       data: {
-        transaction: transaction,
-        paymentRecord: paymentRecord,
-        remainingAmount: transaction.remainingAmount
+        transaction: updatedTransaction,
+        paymentRecord: insertedPayment,
+        remainingAmount: remainingAmount
       }
     });
   } catch (error) {
@@ -411,31 +595,27 @@ router.get("/export", requireAuth, async (req, res) => {
   try {
     // استخدام نفس فلاتر البحث من الـ GET route
     const { status, startDate, endDate, type, category, search, client } = req.query;
-    const query = {};
 
-    if (status) query.status = status;
-    if (startDate || endDate) {
-      query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate);
-    }
-    if (type) query.type = type;
-    if (category) query.category = category;
+    let query = supabase.from('transactions').select('*');
+
+    if (status) query = query.eq('status', status);
+    if (startDate) query = query.gte('date', new Date(startDate).toISOString());
+    if (endDate) query = query.lte('date', new Date(endDate).toISOString());
+    if (type) query = query.eq('type', type);
+    if (category) query = query.eq('category', category);
     if (client && client !== 'none') {
-      query.clientId = client;
+      query = query.eq('client_id', client);
     } else if (client === 'none') {
-      query.clientId = null;
+      query = query.is('client_id', null);
     }
     if (search) {
-      query.$or = [
-        { description: { $regex: search, $options: 'i' } },
-        { reference: { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } }
-      ];
+      query = query.or(`description.ilike.%${search}%,reference.ilike.%${search}%,category.ilike.%${search}%`);
     }
 
-    const transactions = await Transaction.find(query)
-      .sort({ date: -1 });
+    query = query.order('date', { ascending: false });
+
+    const { data: transactions, error } = await query;
+    if (error) throw error;
 
     // تحويل البيانات إلى تنسيق Excel
     const excel = require('exceljs');
@@ -491,31 +671,27 @@ router.get("/report", requireAuth, async (req, res) => {
   try {
     // استخدام نفس فلاتر البحث
     const { status, startDate, endDate, type, category, search, client } = req.query;
-    const query = {};
 
-    if (status) query.status = status;
-    if (startDate || endDate) {
-      query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate);
-    }
-    if (type) query.type = type;
-    if (category) query.category = category;
+    let query = supabase.from('transactions').select('*');
+
+    if (status) query = query.eq('status', status);
+    if (startDate) query = query.gte('date', new Date(startDate).toISOString());
+    if (endDate) query = query.lte('date', new Date(endDate).toISOString());
+    if (type) query = query.eq('type', type);
+    if (category) query = query.eq('category', category);
     if (client && client !== 'none') {
-      query.clientId = client;
+      query = query.eq('client_id', client);
     } else if (client === 'none') {
-      query.clientId = null;
+      query = query.is('client_id', null);
     }
     if (search) {
-      query.$or = [
-        { description: { $regex: search, $options: 'i' } },
-        { reference: { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } }
-      ];
+      query = query.or(`description.ilike.%${search}%,reference.ilike.%${search}%,category.ilike.%${search}%`);
     }
 
-    const transactions = await Transaction.find(query)
-      .sort({ date: -1 });
+    query = query.order('date', { ascending: false });
+
+    const { data: transactions, error } = await query;
+    if (error) throw error;
 
     // إنشاء PDF مع دعم اللغة العربية
     const PDFDocument = require('pdfkit');
@@ -760,8 +936,13 @@ router.get("/report", requireAuth, async (req, res) => {
 // GET تفاصيل مديونية مع سجل المدفوعات
 router.get("/:id/debt-details", requireAuth, async (req, res) => {
   try {
-    const transaction = await Transaction.findById(req.params.id);
-    if (!transaction) {
+    const { data: transaction, error: findError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (findError || !transaction) {
       return sendError(res, 404, "المعاملة غير موجودة", "NOT_FOUND");
     }
 
@@ -769,13 +950,22 @@ router.get("/:id/debt-details", requireAuth, async (req, res) => {
       return sendError(res, 400, "هذه المعاملة ليست مديونية", "VALIDATION_ERROR");
     }
 
+    // Get payment history from transaction_payments table
+    const { data: paymentHistory, error: paymentsError } = await supabase
+      .from('transaction_payments')
+      .select('*')
+      .eq('transaction_id', req.params.id)
+      .order('payment_date', { ascending: false });
+
+    if (paymentsError) throw paymentsError;
+
     res.json({
       success: true,
       data: {
         transaction: transaction,
-        paymentHistory: transaction.paymentHistory || [],
-        debtStatus: transaction.debtStatus,
-        remainingAmount: transaction.remainingAmount
+        paymentHistory: paymentHistory || [],
+        debtStatus: transaction.debt_status,
+        remainingAmount: transaction.remaining_amount
       }
     });
   } catch (error) {

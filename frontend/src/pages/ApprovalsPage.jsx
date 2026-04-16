@@ -122,140 +122,58 @@ const ApprovalsPage = () => {
       employeeId: transaction.employeeId || ''
     };
 
+    const t = safeTransaction;
+    const isIncome = t.type === 'income';
+    const cfg = isIncome
+      ? { bg: 'from-green-50 to-emerald-50 dark:from-green-900/15 dark:to-emerald-900/10', border: 'border-green-100 dark:border-green-900/30', color: 'green', sign: '+', Icon: ArrowDownCircle }
+      : { bg: 'from-red-50 to-rose-50 dark:from-red-900/15 dark:to-rose-900/10', border: 'border-red-100 dark:border-red-900/30', color: 'red', sign: '-', Icon: ArrowUpCircle };
+
     return (
-      <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-yellow-400">
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`p-3 rounded-full ${
-                  safeTransaction.type === 'income' 
-                    ? 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                    : 'bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400'
-                }`}>
-                  {safeTransaction.type === 'income' ? (
-                    <ArrowDownCircle className="w-5 h-5" />
-                  ) : (
-                    <ArrowUpCircle className="w-5 h-5" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                    {safeTransaction.description}
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    <span>رقم المعاملة: </span>
-                    <span className="font-semibold">{safeTransaction.transactionNumber}</span>
-                    {safeTransaction.reference && <span> • {safeTransaction.reference}</span>}
-                    {safeTransaction.date && <span> • {safeTransaction.date}</span>}
-                  </p>
-                  <Badge variant="outline" className="mt-1 text-yellow-600 border-yellow-200">
-                    <Clock className="w-3 h-3 mr-1" />
-                    قيد المراجعة
-                  </Badge>
-                </div>
+      <div className={`rounded-xl overflow-hidden bg-gradient-to-br ${cfg.bg} border ${cfg.border} hover:shadow-md transition-all`}>
+        <div className="p-4">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <div className={`w-8 h-8 rounded-lg bg-${cfg.color}-100 dark:bg-${cfg.color}-900/30 flex items-center justify-center flex-shrink-0`}>
+                <cfg.Icon className={`w-4 h-4 text-${cfg.color}-600 dark:text-${cfg.color}-400`} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">{t.description}</h3>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 font-mono mt-0.5">{t.transactionNumber} · {t.date}</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className={`text-2xl font-bold ${
-                safeTransaction.type === 'income' 
-                  ? 'text-green-600 dark:text-green-400' 
-                  : 'text-red-600 dark:text-red-400'
-              }`}>
-                {safeTransaction.type === 'income' ? '+' : '-'}{formatCurrency(safeTransaction.amount)}
-                <span className="text-base ml-1">{safeTransaction.currency}</span>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {safeTransaction.type === 'income' ? 'إيرادات' : 'مصروفات'}
-              </p>
+            <div className="text-left flex-shrink-0">
+              <p className={`text-base font-bold text-${cfg.color}-600 dark:text-${cfg.color}-400 font-mono`} dir="ltr">{cfg.sign}{formatCurrency(t.amount)} <span className="text-[10px]">EGP</span></p>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 mt-0.5">
+                <Clock className="w-2.5 h-2.5" /> قيد المراجعة
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">التصنيف: </span>
-              <span className="font-medium text-gray-900 dark:text-white">{safeTransaction.category}</span>
-              {safeTransaction.subcategory && (
-                <span className="ml-2 text-gray-500 dark:text-gray-400">({safeTransaction.subcategory})</span>
-              )}
-            </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">طريقة الدفع: </span>
-              <span className="font-medium text-gray-900 dark:text-white">{safeTransaction.paymentMethod}</span>
-            </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">الحالة: </span>
-              <span className="font-medium text-gray-900 dark:text-white">{safeTransaction.status}</span>
-            </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">طالب الموافقة: </span>
-              <span className="font-medium text-gray-900 dark:text-white">{safeTransaction.createdBy}</span>
-            </div>
-            {safeTransaction.clientId && (
-              <div>
-                <span className="text-gray-500 dark:text-gray-400">العميل: </span>
-                <span className="font-medium text-gray-900 dark:text-white">{safeTransaction.clientId}</span>
-              </div>
-            )}
-            {safeTransaction.employeeId && (
-              <div>
-                <span className="text-gray-500 dark:text-gray-400">الموظف: </span>
-                <span className="font-medium text-gray-900 dark:text-white">{safeTransaction.employeeId}</span>
-              </div>
-            )}
+          {/* Tags */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold bg-${cfg.color}-50 text-${cfg.color}-700 dark:bg-${cfg.color}-900/20 dark:text-${cfg.color}-400`}>{isIncome ? 'إيرادات' : 'مصروفات'}</span>
+            {t.category && <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">{t.category}</span>}
+            {t.paymentMethod && t.paymentMethod !== 'غير محدد' && <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">{t.paymentMethod}</span>}
+            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">{t.createdBy}</span>
           </div>
 
-          {safeTransaction.notes && (
-            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-gray-500 dark:text-gray-400 text-sm">تفاصيل المعاملة: </span>
-              <p className="text-gray-700 dark:text-gray-300 mt-1">{safeTransaction.notes}</p>
-            </div>
-          )}
+          {/* Notes */}
+          {t.notes && <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 bg-white/50 dark:bg-gray-900/30 rounded-lg px-3 py-2 line-clamp-2">{t.notes}</p>}
 
-          {safeTransaction.attachments.length > 0 && (
-            <div className="mb-4">
-              <span className="text-gray-500 dark:text-gray-400 text-sm">المرفقات: </span>
-              <ul className="list-disc ml-6 mt-1">
-                {safeTransaction.attachments.map((file, idx) => (
-                  <li key={idx} className="text-blue-600 dark:text-blue-400 underline cursor-pointer">
-                    {typeof file === 'string' ? file : 'ملف غير معروف'}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
+          {/* Action buttons */}
           {canApprove && (
-            <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <Button 
-                onClick={() => handleApprove(safeTransaction._id)}
-                className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
-                size="lg"
-              >
-                <CheckCircle className="w-5 h-5" />
-                موافقة
-              </Button>
-              <Button 
-                onClick={() => handleReject(safeTransaction._id)}
-                variant="outline"
-                className="flex-1 gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 font-semibold py-3"
-                size="lg"
-              >
-                <XCircle className="w-5 h-5" />
-                رفض
-              </Button>
-              <Button 
-                variant="outline"
-                className="gap-2 px-6"
-                size="lg"
-              >
-                <Eye className="w-4 h-4" />
-                تفاصيل
-              </Button>
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200/50 dark:border-gray-700/50">
+              <button onClick={() => handleApprove(t._id)} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors">
+                <CheckCircle className="w-3.5 h-3.5" /> موافقة
+              </button>
+              <button onClick={() => handleReject(t._id)} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs font-semibold transition-colors">
+                <XCircle className="w-3.5 h-3.5" /> رفض
+              </button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -374,17 +292,19 @@ const ApprovalsPage = () => {
 
       {/* قائمة المعاملات قيد المراجعة */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-base font-bold text-gray-900 dark:text-white">
           المعاملات المطلوبة للمراجعة ({pendingTransactions.length})
         </h2>
-        
+
         {pendingTransactions.length > 0 ? (
-          pendingTransactions.map(transaction => (
-            <TransactionApprovalCard 
-              key={transaction._id || 'trans-' + Math.random().toString(36).substr(2, 9)} 
-              transaction={transaction} 
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+          {pendingTransactions.map(transaction => (
+            <TransactionApprovalCard
+              key={transaction._id || 'trans-' + Math.random().toString(36).substr(2, 9)}
+              transaction={transaction}
             />
-          ))
+          ))}
+          </div>
         ) : (
           <Card>
             <CardContent className="p-8 text-center">

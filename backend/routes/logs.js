@@ -1,12 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const sendError = require('../utils/sendError');
-const Log = require('../models/Log');
+const { supabase } = require('../config/database');
 
 // GET all logs
 router.get('/', async (req, res) => {
   try {
-    const logs = await Log.find().sort({ timestamp: -1 });
+    const { data: logs, error } = await supabase
+      .from('logs')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
+    if (error) throw error;
+
     res.json(logs);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -15,9 +21,15 @@ router.get('/', async (req, res) => {
 
 // POST add log
 router.post('/', async (req, res) => {
-  const log = new Log(req.body);
   try {
-    const newLog = await log.save();
+    const { data: newLog, error } = await supabase
+      .from('logs')
+      .insert(req.body)
+      .select()
+      .single();
+
+    if (error) throw error;
+
     res.status(201).json(newLog);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -27,24 +39,44 @@ router.post('/', async (req, res) => {
 // GET logs stats
 router.get('/stats', async (req, res) => {
   try {
-    const totalLogs = await Log.countDocuments();
+    // Total logs count
+    const { count: totalLogs, error: countErr } = await supabase
+      .from('logs')
+      .select('id', { count: 'exact', head: true });
+    if (countErr) throw countErr;
+
+    // Today's logs count
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    const todayLogs = await Log.countDocuments({ timestamp: { $gte: today, $lt: tomorrow } });
+
+    const { count: todayLogs, error: todayErr } = await supabase
+      .from('logs')
+      .select('id', { count: 'exact', head: true })
+      .gte('timestamp', today.toISOString())
+      .lt('timestamp', tomorrow.toISOString());
+    if (todayErr) throw todayErr;
+
     // Breakdown by action
-    const actionAgg = await Log.aggregate([
-      { $group: { _id: '$action', count: { $sum: 1 } } }
-    ]);
+    const { data: allLogs, error: allErr } = await supabase
+      .from('logs')
+      .select('action, "user"');
+    if (allErr) throw allErr;
+
     const actionBreakdown = {};
-    actionAgg.forEach(a => { actionBreakdown[a._id] = a.count; });
-    // Breakdown by user
-    const userAgg = await Log.aggregate([
-      { $group: { _id: '$user', count: { $sum: 1 } } }
-    ]);
     const userActivity = {};
-    userAgg.forEach(u => { userActivity[u._id] = u.count; });
+    allLogs.forEach(log => {
+      // Action breakdown
+      if (log.action) {
+        actionBreakdown[log.action] = (actionBreakdown[log.action] || 0) + 1;
+      }
+      // User activity
+      if (log.user) {
+        userActivity[log.user] = (userActivity[log.user] || 0) + 1;
+      }
+    });
+
     res.json({
       success: true,
       data: {
@@ -59,4 +91,4 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
